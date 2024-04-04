@@ -7,7 +7,7 @@ import torch
 import madgan
 from madgan import constants
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def train(

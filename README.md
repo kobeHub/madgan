@@ -8,6 +8,14 @@ This implementation is based on the model described in the MAD-GAN paper (https:
 
 ![](img/madgan.png)
 
+## Data Preparation
+
+Download the SWaT data and extrat it to the `data` directory. Run the command to generate the preprocessd data:
+
+```bash
+python -m madgan swat './data/SWaT_Dataset_Normal_v0.xlsx' --n-features 10 --output-csv './data/swat_data_normal_train.csv' --sheet-name Normal.csv
+```
+
 ## Train the MAD-GAN ⛹️‍♀️
 
 To train the MAD-GAN neural network you need a preprocessed dataset in CSV format
