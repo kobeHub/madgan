@@ -56,7 +56,7 @@ def train(
     discriminator = madgan.models.Discriminator(input_dim=input_d,
                                                 hidden_units=hidden_dim,
                                                 add_batch_mean=add_batch_mean)
-    generator.to(DEVICE)
+    discriminator.to(DEVICE)
     pms.summary(discriminator, torch.zeros((batch_size, window_size,
                                             df.shape[-1])).to(DEVICE), batch_size=batch_size, show_input=True, print_summary=True)
 
