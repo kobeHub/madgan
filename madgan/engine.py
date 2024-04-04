@@ -55,6 +55,9 @@ def train_one_epoch(generator: nn.Module,
 
     for i, (real, z) in enumerate(zip(real_dataloader, latent_dataloader)):
         bs = real.size(0)
+        # At the end of the epoch, the last batch might be smaller
+        if z.shape[0] > bs:
+            z = z[:bs]
         real = real.float().to(device)
         z = z.float().to(device)
 
