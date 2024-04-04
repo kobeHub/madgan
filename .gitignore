@@ -1,0 +1,5 @@
+.mypy_cache/
+data/
+.vscode/
+models/
+__pycache__/
