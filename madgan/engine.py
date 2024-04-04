@@ -92,8 +92,9 @@ def train_one_epoch(generator: nn.Module,
         # Update generator
         generator.zero_grad()
         discriminator.eval()
-
         g_logits = discriminator(fake)
+        discriminator.train()
+
         # Generator will improve so it can cheat the discriminator
         cheat_loss = loss_fn(g_logits, real_labels)
         cheat_loss.backward()
