@@ -64,10 +64,6 @@ def train_one_epoch(generator: nn.Module,
         real_labels = torch.full((bs, ), normal_label).float().to(device)
         fake_labels = torch.full((bs, ), anomaly_label).float().to(device)
         all_labels = torch.cat([real_labels, fake_labels])
-        if bs < 32:
-            print(f'bs: {bs}, z shape: {z.shape}')
-            print(
-                f'fake label: {fake_labels}, real label: {real_labels}')
 
         # Generate fake samples with the generator
         # print(
@@ -150,6 +146,7 @@ def train_one_epoch(generator: nn.Module,
 
 @torch.no_grad()
 def evaluate(generator: nn.Module,
+             device: torch.device,
              discriminator: nn.Module,
              loss_fn: LossFn,
              real_dataloader: Iterator[torch.Tensor],
@@ -184,8 +181,13 @@ def evaluate(generator: nn.Module,
     agg_metrics: Dict[str, float] = {}
     for real, z in zip(real_dataloader, latent_dataloader):
         bs = real.size(0)
-        real_labels = torch.full((bs, ), normal_label).float().to(real.device)
-        fake_labels = torch.full((bs, ), anomaly_label).float().to(real.device)
+        # At the end of the epoch, the last batch might be smaller
+        if z.shape[0] > bs:
+            z = z[:bs]
+        real = real.float().to(device)
+        z = z.float().to(device)
+        real_labels = torch.full((bs, ), normal_label).float().to(device)
+        fake_labels = torch.full((bs, ), anomaly_label).float().to(device)
         all_labels = torch.cat([real_labels, fake_labels])
 
         # Generate fake samples with the generator

@@ -84,6 +84,7 @@ def train(
             log_every=log_every)
 
     madgan.engine.evaluate(generator=generator,
+                           device=DEVICE,
                            discriminator=discriminator,
                            real_dataloader=test_dl,
                            latent_dataloader=latent_space,
