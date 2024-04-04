@@ -64,7 +64,7 @@ def train_one_epoch(generator: nn.Module,
         if bs < 32:
             print(f'bs: {bs}, z shape: {z.shape}')
             print(
-                f'fake label: {fake_labels[0, :, 0]}, real label: {real_labels[0, :, 0]}')
+                f'fake label: {fake_labels}, real label: {real_labels}')
 
         # Generate fake samples with the generator
         # print(
