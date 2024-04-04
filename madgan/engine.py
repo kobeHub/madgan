@@ -114,7 +114,7 @@ def train_one_epoch(generator: nn.Module,
             # Generator accuracy
             generator_correct = ((fake_logits_mean > .5).view(-1)
                                  == real_labels).float().sum()
-            print(f'fake_logits_mean > .5: {(fake_logits_mean > .5).view(-1)}')
+            # print(f'fake_logits_mean > .5: {(fake_logits_mean > .5).view(-1)}')
             generator_acc = generator_correct / bs
             # discriminator_acc = ((d_logits.detach() >
             #                       .5) == all_labels).float()
