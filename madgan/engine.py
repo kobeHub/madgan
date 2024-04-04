@@ -55,13 +55,20 @@ def train_one_epoch(generator: nn.Module,
 
     for i, (real, z) in enumerate(zip(real_dataloader, latent_dataloader)):
         bs = real.size(0)
-        real.to(device)
-        z.to(device)
+        real = real.float().to(device)
+        z = z.float().to(device)
         real_labels = torch.full((bs, ), normal_label).float().to(device)
         fake_labels = torch.full((bs, ), anomaly_label).float().to(device)
+        # Expand the labels to match the batch size
+        real_labels = real_labels.view(bs, 1, 1).expand(-1, 256, 1)
+        fake_labels = fake_labels.view(bs, 1, 1).expand(-1, 256, 1)
         all_labels = torch.cat([real_labels, fake_labels])
+        # print(
+        #     f'fake label: {fake_labels[0, :, 0]}, real label: {real_labels[0, :, 0]}')
 
         # Generate fake samples with the generator
+        # print(
+        #     f"Shape of z: {z.shape}, shape of real: {real.shape}, shape of real_labels: {real_labels.shape}")
         fake = generator(z)
 
         # Update discriminator
@@ -70,11 +77,13 @@ def train_one_epoch(generator: nn.Module,
         real_logits = discriminator(real)
         fake_logits = discriminator(fake.detach())
         d_logits = torch.cat([real_logits, fake_logits])
+        # print(
+        #     f'The output shapes: {fake.shape} {real_logits.shape}, {fake_logits.shape}, {d_logits.shape}')
 
         # Discriminator tries to identify the true nature of each sample
         # (anomaly or normal)
-        d_real_loss = loss_fn(real_logits.view(-1), real_labels)
-        d_fake_loss = loss_fn(fake_logits.view(-1), fake_labels)
+        d_real_loss = loss_fn(real_logits, real_labels)
+        d_fake_loss = loss_fn(fake_logits, fake_labels)
         d_loss = d_real_loss + d_fake_loss
         d_loss.backward()
 

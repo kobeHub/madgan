@@ -99,8 +99,11 @@ class Discriminator(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self.add_batch_mean:
             bs = x.size(0)
+            print(f'input x shape: {x.shape}')
             batch_mean = x.mean(0, keepdim=True).repeat(bs, 1, 1)
             x = torch.cat([x, batch_mean], dim=-1)
+            print(
+                f'x shape: {x.shape}, batch_mean shape: {batch_mean.shape}, bs: {bs}')
 
         rnn_output, _ = self.lstm(x)
         return self.activation(self.linear(rnn_output))

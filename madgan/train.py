@@ -3,6 +3,7 @@ from typing import Iterator, Tuple
 
 import pandas as pd
 import torch
+import pytorch_model_summary as pms
 
 import madgan
 from madgan import constants
@@ -18,6 +19,7 @@ def train(
         hidden_dim: int = 512,
         window_size: int = constants.WINDOW_SIZE,
         window_stride: int = constants.WINDOW_STRIDE,
+        add_batch_mean: bool = False,
         random_seed: int = 0,
         model_dir: Path = Path("models/madgan"),
 ) -> None:
@@ -34,7 +36,8 @@ def train(
     latent_space = madgan.data.LatentSpaceIterator(noise_shape=[
         batch_size,
         window_size,
-        df.shape[-1],
+        constants.LATENT_SPACE_DIM,
+        # df.shape[-1],
     ])
 
     generator = madgan.models.Generator(
@@ -42,11 +45,19 @@ def train(
         hidden_units=hidden_dim,
         output_dim=df.shape[-1])
     generator.to(DEVICE)
+    pms.summary(generator, torch.zeros((batch_size, window_size, constants.LATENT_SPACE_DIM)).to(DEVICE),
+                show_input=True, batch_size=batch_size, print_summary=True)
 
-    discriminator = madgan.models.Discriminator(input_dim=df.shape[-1],
+    # Handle adding batch mean to the discriminator
+    input_d = df.shape[-1]
+    if add_batch_mean:
+        input_d *= 2
+    discriminator = madgan.models.Discriminator(input_dim=input_d,
                                                 hidden_units=hidden_dim,
-                                                add_batch_mean=True)
+                                                add_batch_mean=add_batch_mean)
     generator.to(DEVICE)
+    pms.summary(discriminator, torch.zeros((batch_size, window_size,
+                df.shape[-1])).to(DEVICE), batch_size=batch_size, show_input=True, print_summary=True)
 
     discriminator_optim = torch.optim.Adam(discriminator.parameters(), lr=lr)
     generator_optim = torch.optim.Adam(generator.parameters(), lr=lr)

@@ -72,7 +72,7 @@ def prepare_dataloader(ds: Dataset,
 
 def _window_array(array: np.ndarray, window_size: int,
                   window_slide: int) -> np.ndarray:
-    return np.vstack([
+    return np.array([
         array[i:i + window_size]
-        for i in range(0, array.shape[0], window_slide)
+        for i in range(0, array.shape[0] - window_size + 1, window_slide)
     ])
