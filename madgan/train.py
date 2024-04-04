@@ -12,16 +12,17 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def train(
-        input_data: str,
-        batch_size: int = 32,
-        epochs: int = 8,
-        lr: float = 1e-4,
-        hidden_dim: int = 512,
-        window_size: int = constants.WINDOW_SIZE,
-        window_stride: int = constants.WINDOW_STRIDE,
-        add_batch_mean: bool = False,
-        random_seed: int = 0,
-        model_dir: Path = Path("models/madgan"),
+    input_data: str,
+    batch_size: int = constants.BATCH_SIZE,
+    epochs: int = constants.EPOCHS,
+    lr: float = constants.LEARNING_RATE,
+    hidden_dim: int = constants.HIDDEN_DIM,
+    window_size: int = constants.WINDOW_SIZE,
+    window_stride: int = constants.WINDOW_STRIDE,
+    add_batch_mean: bool = constants.ADD_BATCH_MEAN,
+    random_seed: int = constants.RANDOM_SEED,
+    model_dir: Path = Path("models"),
+    log_every: int = 30,
 ) -> None:
 
     madgan.engine.set_seed(random_seed)
@@ -57,7 +58,7 @@ def train(
                                                 add_batch_mean=add_batch_mean)
     generator.to(DEVICE)
     pms.summary(discriminator, torch.zeros((batch_size, window_size,
-                df.shape[-1])).to(DEVICE), batch_size=batch_size, show_input=True, print_summary=True)
+                                            df.shape[-1])).to(DEVICE), batch_size=batch_size, show_input=True, print_summary=True)
 
     discriminator_optim = torch.optim.Adam(discriminator.parameters(), lr=lr)
     generator_optim = torch.optim.Adam(generator.parameters(), lr=lr)
@@ -76,18 +77,19 @@ def train(
             generator_optimizer=generator_optim,
             normal_label=constants.REAL_LABEL,
             anomaly_label=constants.FAKE_LABEL,
-            epoch=epoch)
+            epoch=epoch,
+            log_every=log_every)
 
-        madgan.engine.evaluate(generator=generator,
-                               discriminator=discriminator,
-                               real_dataloader=test_dl,
-                               latent_dataloader=latent_space,
-                               loss_fn=criterion_fn,
-                               normal_label=constants.REAL_LABEL,
-                               anomaly_label=constants.FAKE_LABEL)
+    madgan.engine.evaluate(generator=generator,
+                           discriminator=discriminator,
+                           real_dataloader=test_dl,
+                           latent_dataloader=latent_space,
+                           loss_fn=criterion_fn,
+                           normal_label=constants.REAL_LABEL,
+                           anomaly_label=constants.FAKE_LABEL)
 
-        generator.save(model_dir / f"generator_{epoch}.pt")
-        discriminator.save(model_dir / f"discriminator_{epoch}.pt")
+    generator.save(model_dir / f"generator_{epoch}.pt")
+    discriminator.save(model_dir / f"discriminator_{epoch}.pt")
 
 
 def _prepare_data(
