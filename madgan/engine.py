@@ -57,11 +57,14 @@ def train_one_epoch(generator: nn.Module,
         bs = real.size(0)
         real = real.float().to(device)
         z = z.float().to(device)
+
         real_labels = torch.full((bs, ), normal_label).float().to(device)
         fake_labels = torch.full((bs, ), anomaly_label).float().to(device)
         all_labels = torch.cat([real_labels, fake_labels])
-        # print(
-        #     f'fake label: {fake_labels[0, :, 0]}, real label: {real_labels[0, :, 0]}')
+        if bs < 32:
+            print(f'bs: {bs}, z shape: {z.shape}')
+            print(
+                f'fake label: {fake_labels[0, :, 0]}, real label: {real_labels[0, :, 0]}')
 
         # Generate fake samples with the generator
         # print(

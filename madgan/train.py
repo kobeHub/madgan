@@ -65,6 +65,9 @@ def train(
 
     criterion_fn = torch.nn.BCELoss()
 
+    print(
+        f'Data shape: {df.shape}, batch size: {batch_size}, window size: {window_size}, window stride: {window_stride}')
+
     for epoch in range(epochs):
         madgan.engine.train_one_epoch(
             generator=generator,
