@@ -17,6 +17,7 @@ def set_seed(seed: int = 0) -> None:
 def train_one_epoch(generator: nn.Module,
                     discriminator: nn.Module,
                     loss_fn: LossFn,
+                    device: torch.device,
                     real_dataloader: Iterator[torch.Tensor],
                     latent_dataloader: Iterator[torch.Tensor],
                     discriminator_optimizer: torch.optim.Optimizer,
@@ -54,8 +55,10 @@ def train_one_epoch(generator: nn.Module,
 
     for i, (real, z) in enumerate(zip(real_dataloader, latent_dataloader)):
         bs = real.size(0)
-        real_labels = torch.full((bs, ), normal_label).float().to(real.device)
-        fake_labels = torch.full((bs, ), anomaly_label).float().to(real.device)
+        real.to(device)
+        z.to(device)
+        real_labels = torch.full((bs, ), normal_label).float().to(device)
+        fake_labels = torch.full((bs, ), anomaly_label).float().to(device)
         all_labels = torch.cat([real_labels, fake_labels])
 
         # Generate fake samples with the generator

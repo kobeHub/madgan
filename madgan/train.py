@@ -58,6 +58,7 @@ def train(
             generator=generator,
             discriminator=discriminator,
             loss_fn=criterion_fn,
+            device=DEVICE,
             real_dataloader=train_dl,
             latent_dataloader=latent_space,
             discriminator_optimizer=discriminator_optim,
