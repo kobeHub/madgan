@@ -207,7 +207,6 @@ def evaluate(generator: nn.Module,
         # Discriminator accuracy
         discriminator_correct = (
             (d_logits > .5).view(-1) == all_labels).float().sum()
-        print(f'logits > .5: {(d_logits > .5).view(-1)}')
         # 2*bs because we have real and fake samples
         discriminator_acc = discriminator_correct / (2 * bs)
 
