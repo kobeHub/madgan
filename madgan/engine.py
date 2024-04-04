@@ -30,24 +30,24 @@ def train_one_epoch(generator: nn.Module,
 
     Args:
         generator (nn.Module): Torch module implementing the GAN generator.
-        discriminator (nn.Module): Torch module implementing the GAN 
+        discriminator (nn.Module): Torch module implementing the GAN
             discriminator.
         loss_fn (LossFn): Loss function, should return a reduced value.
-        real_dataloader (Iterator[torch.Tensor]): Iterator to go over real data 
+        real_dataloader (Iterator[torch.Tensor]): Iterator to go over real data
             samples.
-        latent_dataloader (Iterator[torch.Tensor]): Iterator to go through 
+        latent_dataloader (Iterator[torch.Tensor]): Iterator to go through
             generated samples from the latent space.
-        discriminator_optimizer (torch.optim.Optimizer): Optimizer for the 
+        discriminator_optimizer (torch.optim.Optimizer): Optimizer for the
             discrimninator.
-        generator_optimizer (torch.optim.Optimizer): Oprimizer for the generator 
+        generator_optimizer (torch.optim.Optimizer): Oprimizer for the generator
             module.
-        normal_label (int): Label for samples with normal behaviour 
+        normal_label (int): Label for samples with normal behaviour
             (real or non-anomaly). Defaults to 0.
-        anomaly_label (int): Label that identifies generate samples 
+        anomaly_label (int): Label that identifies generate samples
             (anomalies when running inference). Defaults to 1.
-        epoch (int, optional): Current epoch (just for logging purposes). 
+        epoch (int, optional): Current epoch (just for logging purposes).
             Defaults to 0.
-        log_every (int, optional): Log the training progess every n steps. 
+        log_every (int, optional): Log the training progess every n steps.
             Defaults to 30.
     """
     generator.train()
@@ -59,9 +59,6 @@ def train_one_epoch(generator: nn.Module,
         z = z.float().to(device)
         real_labels = torch.full((bs, ), normal_label).float().to(device)
         fake_labels = torch.full((bs, ), anomaly_label).float().to(device)
-        # Expand the labels to match the batch size
-        real_labels = real_labels.view(bs, 1, 1).expand(-1, 256, 1)
-        fake_labels = fake_labels.view(bs, 1, 1).expand(-1, 256, 1)
         all_labels = torch.cat([real_labels, fake_labels])
         # print(
         #     f'fake label: {fake_labels[0, :, 0]}, real label: {real_labels[0, :, 0]}')
@@ -82,8 +79,11 @@ def train_one_epoch(generator: nn.Module,
 
         # Discriminator tries to identify the true nature of each sample
         # (anomaly or normal)
-        d_real_loss = loss_fn(real_logits, real_labels)
-        d_fake_loss = loss_fn(fake_logits, fake_labels)
+        # Take the mean along the sequence length dimension
+        real_logits_mean = real_logits.mean(dim=1).squeeze()
+        fake_logits_mean = fake_logits.mean(dim=1).squeeze()
+        d_real_loss = loss_fn(real_logits_mean, real_labels)
+        d_fake_loss = loss_fn(fake_logits_mean, fake_labels)
         d_loss = d_real_loss + d_fake_loss
         d_loss.backward()
 
@@ -91,12 +91,13 @@ def train_one_epoch(generator: nn.Module,
 
         # Update generator
         generator.zero_grad()
-        discriminator.eval()
+        # discriminator.eval()
         g_logits = discriminator(fake)
-        discriminator.train()
+        g_logits_mean = g_logits.mean(dim=1).squeeze()
+        # discriminator.train()
 
         # Generator will improve so it can cheat the discriminator
-        cheat_loss = loss_fn(g_logits, real_labels)
+        cheat_loss = loss_fn(g_logits_mean, real_labels)
         cheat_loss.backward()
         generator_optimizer.step()
 
@@ -105,7 +106,9 @@ def train_one_epoch(generator: nn.Module,
                                   .5) == all_labels).float()
             discriminator_acc = discriminator_acc.sum().div(bs)
 
-            generator_acc = (g_logits.detach() > .5 == real_labels).float()
+            generator_acc = ((g_logits.detach().mean(dim=1) > .5)
+                             == real_labels).float()
+
             generator_acc = generator_acc.sum().div(bs)
 
             log = {
