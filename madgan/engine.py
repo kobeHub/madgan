@@ -14,7 +14,7 @@ def set_seed(seed: int = 0) -> None:
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
-    torch.use_deterministic_algorithms(True)
+    # torch.use_deterministic_algorithms(True)
 
 
 def train_one_epoch(generator: nn.Module,
