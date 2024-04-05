@@ -7,8 +7,8 @@ N_FEATUERS = 10
 # Input args
 BATCH_SIZE = 32
 LR = 1e-4
-EPOCHS = 8
-G_LR = 5e-4
+EPOCHS = 4
+G_LR = 5e-3
 D_LR = 1e-4
 HIDDEN_DIM = 256
 G_LSTM_LAYERS = 3
