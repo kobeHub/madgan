@@ -25,6 +25,7 @@ def train_one_epoch(generator: nn.Module,
                     normal_label: int = 0,
                     anomaly_label: int = 1,
                     epoch: int = 0,
+                    epochs: int = 0,
                     log_every: int = 30,
                     g_loss_records: List[float] = None,
                     d_loss_records: List[float] = None) -> None:
@@ -112,11 +113,11 @@ def train_one_epoch(generator: nn.Module,
             d_preds = (d_output > .5).float()
             discriminator_acc = (d_preds == all_labels).float().mean()
 
-            g_preds = (fake_out_g > .5).float()
+            g_preds = (fake_output > .5).float()
             generator_acc = (g_preds == real_labels).float().mean()
 
             print(
-                f"Epoch [{epoch}/{log_every}], Step [{i}/{len(real_dataloader)}], "
+                f"Epoch [{epoch}/{epochs}], Step [{i}/{len(real_dataloader)}], "
                 f"Loss_D: {d_loss.item():.4f}, Loss_G: {cheat_loss.item():.4f}, "
                 f"D(x): {D_x: .6f}, D(G(z)): {D_G_z1: .6f} / {D_G_z2: .6f},"
                 f" Discriminator acc: {discriminator_acc: .6f}, Generator acc: {generator_acc: .6f}")
@@ -175,24 +176,29 @@ def evaluate(generator: nn.Module,
         fake = generator(z)
 
         # Try to classify the real and generated samples
-        real_logits = discriminator(real).mean(dim=1).squeeze()
-        fake_logits = discriminator(fake.detach()).mean(dim=1).squeeze()
-        d_logits = torch.cat([real_logits, fake_logits])
+        real_output, real_logits = discriminator(real)
+        fake_output, fake_logits = discriminator(fake.detach())
+        d_output = torch.cat([real_output, fake_output])
+        real_labels = torch.full(
+            real_output.shape, normal_label, dtype=torch.float, device=device)
+        fake_labels = torch.full(
+            fake_output.shape, anomaly_label, dtype=torch.float, device=device)
+        all_labels = torch.cat([real_labels, fake_labels])
 
         # Discriminator tries to identify the true nature of each sample
         # (anomaly or normal)
-        d_real_loss = loss_fn(real_logits.view(-1), real_labels)
-        d_fake_loss = loss_fn(fake_logits.view(-1), fake_labels)
+        d_real_loss = loss_fn(real_output, real_labels)
+        d_fake_loss = loss_fn(fake_output, fake_labels)
         d_loss = d_real_loss + d_fake_loss
 
         # Discriminator accuracy
         discriminator_correct = (
-            (d_logits > .5).view(-1) == all_labels).float().sum()
+            (d_output > .5) == all_labels).float().sum()
         # 2*bs because we have real and fake samples
         discriminator_acc = discriminator_correct / (2 * bs)
 
         # Generator accuracy
-        generator_correct = ((fake_logits > .5).view(-1)
+        generator_correct = ((fake_output > .5)
                              == real_labels).float().sum()
         generator_acc = generator_correct / bs
 
@@ -203,20 +209,6 @@ def evaluate(generator: nn.Module,
             "discriminator_acc": discriminator_acc.item(),  # Add this line
             "generator_acc": generator_acc.item(),  # Add this line
         }
-
-        # discriminator_acc = ((d_logits > .5) == all_labels).float().mean()
-        # discriminator_acc = discriminator_acc.sum().div(bs)
-
-        # generator_acc = (fake_logits > .5 == real_labels).float()
-        # generator_acc = generator_acc.sum().div(bs)
-
-        # log = {
-        #     "discriminator_real_loss": d_real_loss.item(),
-        #     "discriminator_fake_loss": d_fake_loss.item(),
-        #     "discriminator_loss": d_loss.item(),
-        #     "discriminator_acc": discriminator_acc.item(),
-        #     "generator_acc": generator_acc.item(),
-        # }
 
         if not agg_metrics:
             agg_metrics = log

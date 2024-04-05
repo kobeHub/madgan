@@ -92,6 +92,7 @@ def train(
             normal_label=constants.REAL_LABEL,
             anomaly_label=constants.FAKE_LABEL,
             epoch=epoch,
+            epochs=epochs,
             log_every=log_every,
             g_loss_records=g_loss_records,
             d_loss_records=d_loss_records)
