@@ -192,15 +192,12 @@ def evaluate(generator: nn.Module,
         d_loss = d_real_loss + d_fake_loss
 
         # Discriminator accuracy
-        discriminator_correct = (
-            (d_output > .5) == all_labels).float().sum()
-        # 2*bs because we have real and fake samples
-        discriminator_acc = discriminator_correct / (2 * bs)
+        discriminator_acc = (
+            (d_output > .5) == all_labels).float().mean()
 
         # Generator accuracy
-        generator_correct = ((fake_output > .5)
-                             == real_labels).float().sum()
-        generator_acc = generator_correct / bs
+        generator_acc = ((fake_output > .5)
+                         == real_labels).float().sum()
 
         log = {
             "discriminator_real_loss": d_real_loss.item(),
