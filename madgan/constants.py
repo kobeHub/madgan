@@ -1,7 +1,7 @@
 # Fixed constants for the MAD-GAN model
 REAL_LABEL = 0
 FAKE_LABEL = 1
-LATENT_SPACE_DIM = 32
+LATENT_SPACE_DIM = 15
 N_FEATUERS = 10
 
 # Input args

@@ -55,6 +55,7 @@ def train(
         output_dim=n_features,
         n_lstm_layers=constants.G_LSTM_LAYERS)
     generator.to(DEVICE)
+    print(f'Generator summary:')
     pms.summary(generator, torch.zeros((batch_size, window_size, constants.LATENT_SPACE_DIM)).to(DEVICE),
                 show_input=True, batch_size=batch_size, print_summary=True)
 
@@ -67,6 +68,7 @@ def train(
                                                 n_lstm_layers=constants.D_LSTM_LAYERS,
                                                 add_batch_mean=add_batch_mean)
     discriminator.to(DEVICE)
+    print(f'\nDiscriminator summary:')
     pms.summary(discriminator, torch.zeros((batch_size, window_size, n_features)).to(DEVICE),
                 batch_size=batch_size, show_input=True, print_summary=True)
 

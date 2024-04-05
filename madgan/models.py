@@ -99,11 +99,12 @@ class Discriminator(nn.Module):
         self.n_lstm_layers = n_lstm_layers
 
         extra_features = self.hidden_units if self.add_batch_mean else 0
+        drop_out = 0.1 if n_lstm_layers > 1 else 0
         self.lstm = nn.LSTM(input_size=self.input_dim,
                             hidden_size=self.hidden_units + extra_features,
                             num_layers=self.n_lstm_layers,
                             batch_first=True,
-                            dropout=.1)
+                            dropout=drop_out)
 
         self.linear = nn.Linear(in_features=self.hidden_units + extra_features,
                                 out_features=1)
