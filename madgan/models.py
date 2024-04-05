@@ -42,6 +42,8 @@ class Generator(nn.Module):
                             num_layers=self.n_lstm_layers,
                             batch_first=True,
                             dropout=.1)
+        # Add batch normalization layer
+        self.batch_norm = nn.BatchNorm1d(self.hidden_units)
 
         self.linear = nn.Linear(in_features=self.hidden_units,
                                 out_features=self.output_dim)
@@ -52,6 +54,8 @@ class Generator(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         rnn_output, _ = self.lstm(x)
         rnn_output_2d = rnn_output.reshape(-1, self.hidden_units)
+        rnn_output_2d = self.batch_norm(
+            rnn_output_2d)  # Apply batch normalization
         output_2d = torch.tanh(self.linear(rnn_output_2d))
         output_3d = output_2d.view(-1, self.window_size, self.output_dim)
         return output_3d

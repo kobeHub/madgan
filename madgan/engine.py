@@ -5,6 +5,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from madgan import constants
+
 LossFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
 
 
@@ -12,6 +14,7 @@ def set_seed(seed: int = 0) -> None:
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
+    torch.use_deterministic_algorithms(True)
 
 
 def train_one_epoch(generator: nn.Module,
@@ -55,6 +58,7 @@ def train_one_epoch(generator: nn.Module,
     """
     generator.train()
     discriminator.train()
+    # torch.autograd.set_detect_anomaly(True)
 
     for i, (real, z) in enumerate(zip(real_dataloader, latent_dataloader)):
         bs = real.size(0)
@@ -70,39 +74,42 @@ def train_one_epoch(generator: nn.Module,
         ############################
         # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
         ###########################
-        discriminator.zero_grad()
-        real_output, real_logits = discriminator(real)
-        fake_output, fake_logits = discriminator(fake.detach())
-        # Create labels for the real and fake samples
-        real_labels = torch.full(
-            real_output.shape, normal_label, dtype=torch.float, device=device)
-        fake_labels = torch.full(
-            fake_output.shape, anomaly_label, dtype=torch.float, device=device)
+        for _ in range(constants.D_ROUND_PER_EPOCH):
+            discriminator.zero_grad()
+            real_output, real_logits = discriminator(real)
+            fake_output, fake_logits = discriminator(fake.detach())
+            # Create labels for the real and fake samples
+            real_labels = torch.full(
+                real_output.shape, normal_label, dtype=torch.float, device=device)
+            fake_labels = torch.full(
+                fake_output.shape, anomaly_label, dtype=torch.float, device=device)
 
-        # Discriminator tries to identify the true nature of each sample
-        # (anomaly or normal)
-        d_real_loss = loss_fn(real_output, real_labels)
-        d_fake_loss = loss_fn(fake_output, fake_labels)
-        d_loss = d_real_loss + d_fake_loss
-        # Compute the gradients of discriminator's loss
-        d_loss.backward()
+            # Discriminator tries to identify the true nature of each sample
+            # (anomaly or normal)
+            d_real_loss = loss_fn(real_output, real_labels)
+            d_fake_loss = loss_fn(fake_output, fake_labels)
+            d_loss = d_real_loss + d_fake_loss
+            # Compute the gradients of discriminator's loss
+            d_loss.backward()
+            discriminator_optimizer.step()
         D_x = real_output.mean().item()
         D_G_z1 = fake_output.mean().item()
         # Update the discriminator
-        discriminator_optimizer.step()
 
         ############################
         # (2) Update G network: maximize log(D(G(z)))
         ###########################
-        generator.zero_grad()
-        fake_out_g, fake_logits_g = discriminator(fake)
+        for _ in range(constants.G_ROUND_PER_EPOCH):
+            generator.zero_grad()
+            fake = generator(z)
+            fake_out_g, fake_logits_g = discriminator(fake)
 
-        # Generator will improve so it can cheat the discriminator
-        cheat_loss = loss_fn(fake_out_g, real_labels)
-        cheat_loss.backward()
+            # Generator will improve so it can cheat the discriminator
+            cheat_loss = loss_fn(fake_out_g, real_labels)
+            cheat_loss.backward()
+            # Update the generator
+            generator_optimizer.step()
         D_G_z2 = fake_out_g.mean().item()
-        # Update the generator
-        generator_optimizer.step()
 
         d_loss_records.append(d_loss.item())
         g_loss_records.append(cheat_loss.item())
