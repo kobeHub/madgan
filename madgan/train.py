@@ -16,7 +16,6 @@ def train(
     input_data: str,
     batch_size: int = constants.BATCH_SIZE,
     epochs: int = constants.EPOCHS,
-    lr: float = constants.LEARNING_RATE,
     hidden_dim: int = constants.HIDDEN_DIM,
     window_size: int = constants.WINDOW_SIZE,
     window_stride: int = constants.WINDOW_STRIDE,
@@ -72,8 +71,10 @@ def train(
     pms.summary(discriminator, torch.zeros((batch_size, window_size, n_features)).to(DEVICE),
                 batch_size=batch_size, show_input=True, print_summary=True)
 
-    discriminator_optim = torch.optim.Adam(discriminator.parameters(), lr=lr)
-    generator_optim = torch.optim.Adam(generator.parameters(), lr=lr)
+    discriminator_optim = torch.optim.Adam(
+        discriminator.parameters(), lr=constants.D_LR)
+    generator_optim = torch.optim.Adam(
+        generator.parameters(), lr=constants.G_LR)
 
     criterion_fn = torch.nn.BCELoss()
 
