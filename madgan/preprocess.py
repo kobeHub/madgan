@@ -51,4 +51,6 @@ def swat(raw_data_path: str,
     projected_sample = samples @ pc.T
     print(f"Projected data shape: {projected_sample.shape}")
     print(f"Explained variance: {ex_var},\nHead: {projected_sample[:5]}")
+    projected_sample.columns = [f'PC-{i+1}' for i in range(n_features)]
+    projected_sample.loc[:, 'label'] = labels
     projected_sample.to_csv(output_csv, index=False)

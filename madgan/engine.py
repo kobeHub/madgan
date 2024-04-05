@@ -1,5 +1,5 @@
 import random
-from typing import Callable, Dict, Iterator
+from typing import Callable, Dict, Iterator, List
 
 import numpy as np
 import torch
@@ -25,7 +25,9 @@ def train_one_epoch(generator: nn.Module,
                     normal_label: int = 0,
                     anomaly_label: int = 1,
                     epoch: int = 0,
-                    log_every: int = 30) -> None:
+                    log_every: int = 30,
+                    g_loss_records: List[float] = None,
+                    d_loss_records: List[float] = None) -> None:
     """Trains a GAN for a single epoch.
 
     Args:
@@ -61,84 +63,63 @@ def train_one_epoch(generator: nn.Module,
         real = real.float().to(device)
         z = z.float().to(device)
 
-        real_labels = torch.full((bs, ), normal_label).float().to(device)
-        fake_labels = torch.full((bs, ), anomaly_label).float().to(device)
-        all_labels = torch.cat([real_labels, fake_labels])
-
         # Generate fake samples with the generator
-        # print(
-        #     f"Shape of z: {z.shape}, shape of real: {real.shape}, shape of real_labels: {real_labels.shape}")
         fake = generator(z)
 
-        # Update discriminator
-        discriminator_optimizer.zero_grad()
-        discriminator.train()
-        real_logits = discriminator(real)
-        fake_logits = discriminator(fake.detach())
-        # d_logits = torch.cat([real_logits, fake_logits])
-        # print(
-        #     f'The output shapes: {fake.shape} {real_logits.shape}, {fake_logits.shape}, {d_logits.shape}')
+        ############################
+        # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
+        ###########################
+        discriminator.zero_grad()
+        real_output, real_logits = discriminator(real)
+        fake_output, fake_logits = discriminator(fake.detach())
+        # Create labels for the real and fake samples
+        real_labels = torch.full(
+            real_output.shape, normal_label, dtype=torch.float, device=device)
+        fake_labels = torch.full(
+            fake_output.shape, anomaly_label, dtype=torch.float, device=device)
 
         # Discriminator tries to identify the true nature of each sample
         # (anomaly or normal)
-        # Take the mean along the sequence length dimension
-        real_logits_mean = real_logits.mean(dim=1).squeeze()
-        fake_logits_mean = fake_logits.mean(dim=1).squeeze()
-        d_logits_mean = torch.cat([real_logits_mean, fake_logits_mean])
-
-        d_real_loss = loss_fn(real_logits_mean, real_labels)
-        d_fake_loss = loss_fn(fake_logits_mean, fake_labels)
+        d_real_loss = loss_fn(real_output, real_labels)
+        d_fake_loss = loss_fn(fake_output, fake_labels)
         d_loss = d_real_loss + d_fake_loss
+        # Compute the gradients of discriminator's loss
         d_loss.backward()
-
+        D_x = real_output.mean().item()
+        D_G_z1 = fake_output.mean().item()
+        # Update the discriminator
         discriminator_optimizer.step()
 
-        # Update generator
+        ############################
+        # (2) Update G network: maximize log(D(G(z)))
+        ###########################
         generator.zero_grad()
-        # discriminator.eval()
-        g_logits = discriminator(fake)
-        g_logits_mean = g_logits.mean(dim=1).squeeze()
-        # discriminator.train()
+        fake_out_g, fake_logits_g = discriminator(fake)
 
         # Generator will improve so it can cheat the discriminator
-        cheat_loss = loss_fn(g_logits_mean, real_labels)
+        cheat_loss = loss_fn(fake_out_g, real_labels)
         cheat_loss.backward()
+        D_G_z2 = fake_out_g.mean().item()
+        # Update the generator
         generator_optimizer.step()
 
+        d_loss_records.append(d_loss.item())
+        g_loss_records.append(cheat_loss.item())
         if (i + 1) % log_every == 0:
+            # Evaluate the training accuracy
+            d_output = torch.cat([real_output, fake_output])
+            all_labels = torch.cat([real_labels, fake_labels])
+            d_preds = (d_output > .5).float()
+            discriminator_acc = (d_preds == all_labels).float().mean()
 
-            # Discriminator accuracy
-            discriminator_correct = (
-                (d_logits_mean > .5).view(-1) == all_labels).float().sum()
-            # 2*bs because we have real and fake samples
-            discriminator_acc = discriminator_correct / (2 * bs)
+            g_preds = (fake_out_g > .5).float()
+            generator_acc = (g_preds == real_labels).float().mean()
 
-            # Generator accuracy
-            generator_correct = ((fake_logits_mean > .5).view(-1)
-                                 == real_labels).float().sum()
-            # print(f'fake_logits_mean > .5: {(fake_logits_mean > .5).view(-1)}')
-            generator_acc = generator_correct / bs
-            # discriminator_acc = ((d_logits.detach() >
-            #                       .5) == all_labels).float()
-            # discriminator_acc = discriminator_acc.sum().div(bs)
-
-            # generator_acc = ((g_logits.detach().mean(dim=1) > .5)
-            #                  == real_labels).float()
-
-            # generator_acc = generator_acc.sum().div(bs)
-
-            log = {
-                "generator_loss": cheat_loss.item(),
-                "discriminator_loss": d_loss.item(),
-                "discriminator_acc": discriminator_acc.item(),
-                "generator_acc": generator_acc.item(),
-            }
-
-            header = f"Epoch [{epoch}] Step [{i}]"
-            log_metrics = " ".join(
-                f"{metric_name}:{metric_value:.4f}"
-                for metric_name, metric_value in log.items())
-            print(header, log_metrics)
+            print(
+                f"Epoch [{epoch}/{log_every}], Step [{i}/{len(real_dataloader)}], "
+                f"Loss_D: {d_loss.item():.4f}, Loss_G: {cheat_loss.item():.4f}, "
+                f"D(x): {D_x: .6f}, D(G(z)): {D_G_z1: .6f} / {D_G_z2: .6f},"
+                f" Discriminator acc: {discriminator_acc: .6f}, Generator acc: {generator_acc: .6f}")
 
     discriminator.zero_grad()
     generator.zero_grad()

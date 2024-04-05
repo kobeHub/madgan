@@ -20,6 +20,7 @@ class WindowDataset(Dataset):
     def __init__(self, df: pd.DataFrame, window_size: int,
                  window_slide: int) -> None:
         self.windows = _window_array(df.values, window_size, window_slide)
+        print(f'Windows shape: {self.windows.shape}')
 
     def __getitem__(self, index: int) -> torch.Tensor:
         return torch.as_tensor(self.windows[index].copy())

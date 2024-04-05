@@ -18,13 +18,20 @@ class SerializableModule(Protocol):
 
 
 class Generator(nn.Module):
+    """
+    Generator with input shape: (batch_size, window_size, latent_space_dim)
+    output shape: (batch_size, window_size, output_dim)
+    The output_dim should be the same as the input_dim of the Discriminator, aka the number of features.
+    """
 
     def __init__(self,
+                 window_size: int,
                  latent_space_dim: int,
                  hidden_units: int,
                  output_dim: int,
                  n_lstm_layers: int = 2) -> None:
         super().__init__()
+        self.window_size = window_size
         self.latent_space_dim = latent_space_dim
         self.hidden_units = hidden_units
         self.n_lstm_layers = n_lstm_layers
@@ -38,12 +45,16 @@ class Generator(nn.Module):
 
         self.linear = nn.Linear(in_features=self.hidden_units,
                                 out_features=self.output_dim)
+        # Initialize weights
         nn.init.trunc_normal_(self.linear.bias)
         nn.init.trunc_normal_(self.linear.weight)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         rnn_output, _ = self.lstm(x)
-        return self.linear(rnn_output)
+        rnn_output_2d = rnn_output.reshape(-1, self.hidden_units)
+        output_2d = torch.tanh(self.linear(rnn_output_2d))
+        output_3d = output_2d.view(-1, self.window_size, self.output_dim)
+        return output_3d
 
     def save(self, fpath: Union[Path, str]) -> None:
         chkp = {
@@ -70,6 +81,11 @@ class Generator(nn.Module):
 
 
 class Discriminator(nn.Module):
+    """
+    Discriminator with input shape: (batch_size, window_size, input_dim)
+    output shape: (batch_size, window_size, 1)
+    The input_dim should be the same as the output_dim of the Generator, aka the number of features.
+    """
 
     def __init__(self,
                  input_dim: int,
@@ -106,7 +122,9 @@ class Discriminator(nn.Module):
                 f'x shape: {x.shape}, batch_mean shape: {batch_mean.shape}, bs: {bs}')
 
         rnn_output, _ = self.lstm(x)
-        return self.activation(self.linear(rnn_output))
+        logits = self.linear(rnn_output)
+        output = self.activation(logits)
+        return output, logits
 
     def save(self, fpath: Union[Path, str]) -> None:
         chkp = {

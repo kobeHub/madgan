@@ -7,6 +7,7 @@ import pytorch_model_summary as pms
 
 import madgan
 from madgan import constants
+from madgan.visual import plot_losses
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -30,6 +31,13 @@ def train(
     model_dir.mkdir(parents=True, exist_ok=True)
 
     df = pd.read_csv(input_data)
+    if df.columns.str.contains("label").any():
+        df.drop(columns=["label"], inplace=True)
+        print(f"Dropped label column for training")
+    print(
+        f'Data shape: {df.shape}, batch size: {batch_size}, window size: {window_size}, window stride: {window_stride}\nCol: {df.columns}')
+    # The output_dim of the generator and the input_dim of the discriminator
+    n_features = df.shape[-1]
     train_dl, test_dl = _prepare_data(df=df,
                                       batch_size=batch_size,
                                       window_size=window_size,
@@ -38,35 +46,36 @@ def train(
         batch_size,
         window_size,
         constants.LATENT_SPACE_DIM,
-        # df.shape[-1],
     ])
 
     generator = madgan.models.Generator(
+        window_size=window_size,
         latent_space_dim=constants.LATENT_SPACE_DIM,
         hidden_units=hidden_dim,
-        output_dim=df.shape[-1])
+        output_dim=n_features)
     generator.to(DEVICE)
     pms.summary(generator, torch.zeros((batch_size, window_size, constants.LATENT_SPACE_DIM)).to(DEVICE),
                 show_input=True, batch_size=batch_size, print_summary=True)
 
     # Handle adding batch mean to the discriminator
-    input_d = df.shape[-1]
+    input_d = n_features
     if add_batch_mean:
         input_d *= 2
     discriminator = madgan.models.Discriminator(input_dim=input_d,
                                                 hidden_units=hidden_dim,
                                                 add_batch_mean=add_batch_mean)
     discriminator.to(DEVICE)
-    pms.summary(discriminator, torch.zeros((batch_size, window_size,
-                                            df.shape[-1])).to(DEVICE), batch_size=batch_size, show_input=True, print_summary=True)
+    pms.summary(discriminator, torch.zeros((batch_size, window_size, n_features)).to(DEVICE),
+                batch_size=batch_size, show_input=True, print_summary=True)
 
     discriminator_optim = torch.optim.Adam(discriminator.parameters(), lr=lr)
     generator_optim = torch.optim.Adam(generator.parameters(), lr=lr)
 
     criterion_fn = torch.nn.BCELoss()
 
-    print(
-        f'Data shape: {df.shape}, batch size: {batch_size}, window size: {window_size}, window stride: {window_stride}')
+    # Record loss to plot later
+    g_loss_records = []
+    d_loss_records = []
 
     for epoch in range(epochs):
         madgan.engine.train_one_epoch(
@@ -81,7 +90,9 @@ def train(
             normal_label=constants.REAL_LABEL,
             anomaly_label=constants.FAKE_LABEL,
             epoch=epoch,
-            log_every=log_every)
+            log_every=log_every,
+            g_loss_records=g_loss_records,
+            d_loss_records=d_loss_records)
 
     madgan.engine.evaluate(generator=generator,
                            device=DEVICE,
@@ -94,6 +105,8 @@ def train(
 
     generator.save(model_dir / f"generator_{epoch}.pt")
     discriminator.save(model_dir / f"discriminator_{epoch}.pt")
+    plot_losses(g_loss_records, d_loss_records,
+                model_dir / f"loss_{epoch}.png")
 
 
 def _prepare_data(
