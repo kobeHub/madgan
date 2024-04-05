@@ -52,7 +52,8 @@ def train(
         window_size=window_size,
         latent_space_dim=constants.LATENT_SPACE_DIM,
         hidden_units=hidden_dim,
-        output_dim=n_features)
+        output_dim=n_features,
+        n_lstm_layers=constants.G_LSTM_LAYERS)
     generator.to(DEVICE)
     pms.summary(generator, torch.zeros((batch_size, window_size, constants.LATENT_SPACE_DIM)).to(DEVICE),
                 show_input=True, batch_size=batch_size, print_summary=True)
@@ -63,6 +64,7 @@ def train(
         input_d *= 2
     discriminator = madgan.models.Discriminator(input_dim=input_d,
                                                 hidden_units=hidden_dim,
+                                                n_lstm_layers=constants.D_LSTM_LAYERS,
                                                 add_batch_mean=add_batch_mean)
     discriminator.to(DEVICE)
     pms.summary(discriminator, torch.zeros((batch_size, window_size, n_features)).to(DEVICE),
