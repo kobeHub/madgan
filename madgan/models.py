@@ -59,6 +59,7 @@ class Generator(nn.Module):
     def save(self, fpath: Union[Path, str]) -> None:
         chkp = {
             "config": {
+                "window_size": self.window_size,
                 "latent_space_dim": self.latent_space_dim,
                 "hidden_units": self.hidden_units,
                 "n_lstm_layers": self.n_lstm_layers,
