@@ -18,12 +18,24 @@ class WindowDataset(Dataset):
     """
 
     def __init__(self, df: pd.DataFrame, window_size: int,
-                 window_slide: int) -> None:
-        self.windows = _window_array(df.values, window_size, window_slide)
+                 window_slide: int, use_label: bool = False) -> None:
+        self.use_label = use_label
+        data = df.values
+        if use_label:
+            data = df.drop(columns=["label"]).values
+        self.windows = _window_array(data, window_size, window_slide)
+        if use_label:
+            self.labels = _window_array(
+                df.label.values, window_size, window_slide)
+            assert self.windows.shape[0] == self.labels.shape[0]
         print(f'Windows shape: {self.windows.shape}')
 
     def __getitem__(self, index: int) -> torch.Tensor:
-        return torch.as_tensor(self.windows[index].copy())
+        if self.use_label:
+            return (torch.as_tensor(self.windows[index].copy()),
+                    torch.as_tensor(self.labels[index].copy()))
+        else:
+            return torch.as_tensor(self.windows[index].copy())
 
     def __len__(self) -> int:
         return self.windows.shape[0]
