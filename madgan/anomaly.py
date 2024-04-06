@@ -23,12 +23,13 @@ class AnomalyDetector(object):
         self.max_iter_for_reconstruct = max_iter_for_reconstruct
 
     def predict(self, tensor: torch.Tensor) -> torch.Tensor:
-        return (self.predict_proba(tensor) > self.threshold).int()
+        return (self.predict_proba(tensor) > self.threshold).float()
 
     def predict_proba(self, tensor: torch.Tensor) -> torch.Tensor:
         discriminator_score = self.compute_anomaly_score(tensor)
         discriminator_score *= 1. - self.res_weight
-        reconstruction_loss = self.compute_reconstruction_loss(tensor)
+        reconstruction_loss = self.compute_reconstruction_loss(tensor).view_as(
+                                discriminator_score)
         reconstruction_loss *= self.res_weight
         return reconstruction_loss + discriminator_score
 
@@ -40,7 +41,7 @@ class AnomalyDetector(object):
     def compute_reconstruction_loss(self,
                                     tensor: torch.Tensor) -> torch.Tensor:
         best_reconstruct = self._generate_best_reconstruction(tensor)
-        return (best_reconstruct - tensor).abs().sum(dim=(1, 2))
+        return (best_reconstruct - tensor).abs().sum(dim=(-1))
 
     def _generate_best_reconstruction_v1(self, x):
         z = torch.randn(x.size(0), x.size(
@@ -51,33 +52,38 @@ class AnomalyDetector(object):
 
         for _ in range(10):  # Perform 1000 optimization steps
             optimizer.zero_grad()
+            self.generator.train()
             x_gen = self.generator(z)
             loss = loss_fn(x_gen, x)  # MSE loss
             loss.backward()
             optimizer.step()
+            
+        self.generator.eval()
 
         return self.generator(z).detach()
 
     def _generate_best_reconstruction(self, tensor: torch.Tensor) -> None:
         # The goal of this function is to find the corresponding latent space for the given
         # input and then generate the best possible reconstruction.
-        Z = torch.empty(
-            (tensor.size(0), tensor.size(1), self.latent_space_dim),
-            requires_grad=True).to(self.device)
-        nn.init.normal_(Z, std=0.05)
-
-        optimizer = torch.optim.RMSprop(params=[Z], lr=0.01)
+        Z = torch.randn(
+            (tensor.size(0), tensor.size(1), self.latent_space_dim)).to(self.device)
+        Z.requires_grad = True
+        optimizer = torch.optim.Adam([Z], lr=0.01)
+        #optimizer = torch.optim.RMSprop(params=[Z], lr=0.01)
         loss_fn = nn.MSELoss(reduction="sum")
         normalized_target = F.normalize(tensor, dim=1, p=2)
 
         for _ in range(self.max_iter_for_reconstruct):
             optimizer.zero_grad()
+            self.generator.train()
             generated_samples = self.generator(Z)
             normalized_input = F.normalize(generated_samples, dim=1, p=2)
             reconstruction_error = loss_fn(normalized_input,
                                            normalized_target)  # .sum(dim=(1, 2))
             reconstruction_error.backward()
             optimizer.step()
+            
+        self.generator.eval()
 
         with torch.no_grad():
             best_reconstruct = self.generator(Z)
