@@ -59,6 +59,7 @@ def train_one_epoch(generator: nn.Module,
     generator.train()
     discriminator.train()
     # torch.autograd.set_detect_anomaly(True)
+    update_discriminator = True
 
     for i, (real, z) in enumerate(zip(real_dataloader, latent_dataloader)):
         bs = real.size(0)
@@ -74,6 +75,7 @@ def train_one_epoch(generator: nn.Module,
         ############################
         # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
         ###########################
+        d_loss_current = 0
         for _ in range(constants.D_ROUND_PER_EPOCH):
             discriminator.zero_grad()
             real_output, real_logits = discriminator(real)
@@ -90,15 +92,21 @@ def train_one_epoch(generator: nn.Module,
             d_fake_loss = loss_fn(fake_output, fake_labels)
             d_loss = d_real_loss + d_fake_loss
             # Compute the gradients of discriminator's loss
-            d_loss.backward()
-            discriminator_optimizer.step()
+            if update_discriminator:
+                d_loss.backward()
+                discriminator_optimizer.step()
+            else:
+                print(f"Skip discriminator update with a high loss value")
+            d_loss_current += d_loss.item()
         D_x = real_output.mean().item()
         D_G_z1 = fake_output.mean().item()
+        d_loss = d_loss_current / constants.D_ROUND_PER_EPOCH
         # Update the discriminator
 
         ############################
         # (2) Update G network: maximize log(D(G(z)))
         ###########################
+        g_loss_current = 0
         for _ in range(constants.G_ROUND_PER_EPOCH):
             generator.zero_grad()
             fake = generator(z)
@@ -109,10 +117,16 @@ def train_one_epoch(generator: nn.Module,
             cheat_loss.backward()
             # Update the generator
             generator_optimizer.step()
+            g_loss_current += cheat_loss.item()
+        cheat_loss = g_loss_current / constants.G_ROUND_PER_EPOCH
+        if cheat_loss > 3:
+            update_discriminator = False
+        else:
+            update_discriminator = True
         D_G_z2 = fake_out_g.mean().item()
 
-        d_loss_records.append(d_loss.item())
-        g_loss_records.append(cheat_loss.item())
+        d_loss_records.append(d_loss)
+        g_loss_records.append(cheat_loss)
         if (i + 1) % log_every == 0:
             # Evaluate the training accuracy
             d_output = torch.cat([real_output, fake_output])
@@ -125,7 +139,7 @@ def train_one_epoch(generator: nn.Module,
 
             print(
                 f"Epoch [{epoch}/{epochs}], Step [{i}/{len(real_dataloader)}], "
-                f"Loss_D: {d_loss.item():.4f}, Loss_G: {cheat_loss.item():.4f}, "
+                f"Loss_D: {d_loss:.4f}, Loss_G: {cheat_loss:.4f}, "
                 f"D(x): {D_x: .6f}, D(G(z)): {D_G_z1: .6f} / {D_G_z2: .6f},"
                 f" Discriminator acc: {discriminator_acc: .6f}, Generator acc: {generator_acc: .6f}")
 
