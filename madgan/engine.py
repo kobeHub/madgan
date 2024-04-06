@@ -30,6 +30,7 @@ def train_one_epoch(generator: nn.Module,
                     epoch: int = 0,
                     epochs: int = 0,
                     log_every: int = 30,
+                    skip_d_g_loss: float = 0.7,
                     g_loss_records: List[float] = None,
                     d_loss_records: List[float] = None) -> None:
     """Trains a GAN for a single epoch.
@@ -95,7 +96,7 @@ def train_one_epoch(generator: nn.Module,
             if update_discriminator:
                 d_loss.backward()
                 discriminator_optimizer.step()
-            else:
+            elif (i + 1) % log_every == 0:
                 print(f"Skip discriminator update with a high loss value")
             d_loss_current += d_loss.item()
         D_x = real_output.mean().item()
@@ -119,7 +120,7 @@ def train_one_epoch(generator: nn.Module,
             generator_optimizer.step()
             g_loss_current += cheat_loss.item()
         cheat_loss = g_loss_current / constants.G_ROUND_PER_EPOCH
-        if cheat_loss > 3:
+        if cheat_loss > skip_d_g_loss:
             update_discriminator = False
         else:
             update_discriminator = True

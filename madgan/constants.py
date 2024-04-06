@@ -1,7 +1,7 @@
 # Fixed constants for the MAD-GAN model
 REAL_LABEL = 0
 FAKE_LABEL = 1
-LATENT_SPACE_DIM = 15
+LATENT_SPACE_DIM = 32
 N_FEATUERS = 5
 
 # Input args
@@ -15,6 +15,7 @@ G_LSTM_LAYERS = 3
 D_LSTM_LAYERS = 1
 G_ROUND_PER_EPOCH = 5
 D_ROUND_PER_EPOCH = 1
+SKIP_D_G_LOSS = 0.7
 
 # Windows size = 30 * 1, 2, 3 ... 10
 WINDOW_SIZE = 30 * 2
