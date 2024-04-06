@@ -8,13 +8,14 @@ from madgan.models import Discriminator, Generator
 from madgan.anomaly import AnomalyDetector
 
 import pandas as pd
+import torchmetrics.functional as F
 
 
 def detect(model_path: str = './models/madgan',
            attack_csv: str = './data/swat_data_attack.csv',
            batch_size: int = 32,
-           anomaly_threshold: float = 0.95,
-           max_iter_for_reconstruct: int = 1000,
+           anomaly_threshold: float = 0.8,
+           max_iter_for_reconstruct: int = 10,
            print_every: int = 30):
     """Detect anomalies in the input data using the MAD-GAN model.
 
@@ -50,32 +51,31 @@ def detect(model_path: str = './models/madgan',
     detector = AnomalyDetector(discriminator=discriminator, generator=generator, device=DEVICE,
                                latent_space_dim=constants.LATENT_SPACE_DIM,
                                anomaly_threshold=anomaly_threshold,
-                               res_weight=0.,
+                               res_weight=0.2,
                                max_iter_for_reconstruct=max_iter_for_reconstruct)
     total_samples = 0
     correct_predictions = 0
     for i, (x, y) in enumerate(test_dl):
         x = x.float().to(DEVICE)
         y = y.float().to(DEVICE)
+
         detect_res = detector.predict(x)
 
         # Convert predictions to binary labels
-        pred_labels = (detect_res > detector.anomaly_threshold).float()
+        pred_labels = (detect_res > anomaly_threshold).float().view_as(y)
+        if torch.any(y == 1):
+            print(f'True label: index {i},\n y {y},\n pred: {pred_labels}')
 
         # Update counters
-        total_samples += y.size(0)
+        total_samples += y.size(0) * y.size(1)
         correct_predictions += (pred_labels == y).sum().item()
+        # print(f'Cor: {correct_predictions}, total: {total_samples}')
 
         if i % print_every == 0:
             # Calculate metrics
             accuracy = correct_predictions / total_samples
             precision, recall, f1 = calculate_metrics(pred_labels, y)
-
-            print(f"Precision: {precision}")
-            print(f"Recall: {recall}")
-            print(f"F1 Score: {f1}")
-
-            print(f"Anomaly Detection Batch [{i+1}/{len(test_dl)}]: Accuracy: {accuracy:.4f}"
+            print(f"Anomaly Detection Batch [{i+1}/{len(test_dl)}]: Accuracy: {accuracy:.4f}, "
                   f"Precision: {precision:.4f}, Recall: {recall:.4f}, F1 Score: {f1:.4f}")
 
 
@@ -89,16 +89,17 @@ def calculate_metrics(pred_labels: torch.Tensor, true_labels: torch.Tensor) -> T
     Returns:
         Tuple[float, float, float]: Precision, recall, and F1 score.
     """
-    true_positives = ((pred_labels == 1) & (true_labels == 1)).sum().item()
-    false_positives = ((pred_labels == 1) & (true_labels == 0)).sum().item()
-    false_negatives = ((pred_labels == 0) & (true_labels == 1)).sum().item()
+     # Reshape labels
+    pred_labels = pred_labels.view(-1)
+    true_labels = true_labels.view(-1)
+    print(f'pred shape: {pred_labels.shape}, {true_labels.shape}')
 
-    precision = true_positives / (true_positives + false_positives)
-    recall = true_positives / (true_positives + false_negatives)
-    f1 = 2 * (precision * recall) / (precision + recall)
+    # Compute metrics
+    precision = F.precision(pred_labels, true_labels, num_classes=2, task='binary')
+    recall = F.recall(pred_labels, true_labels, num_classes=2, task='binary')
+    f1 = F.f1_score(pred_labels, true_labels, num_classes=2, task='binary')
 
     return precision, recall, f1
-
 
 def _prepare_data(df: pd.DataFrame, batch_size: int, window_size: int,
                   window_stride: int) -> Iterator[torch.Tensor]:
