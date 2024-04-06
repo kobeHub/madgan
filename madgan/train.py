@@ -97,6 +97,7 @@ def train(
             epoch=epoch,
             epochs=epochs,
             log_every=log_every,
+            skip_d_g_loss=constants.SKIP_D_G_LOSS,
             g_loss_records=g_loss_records,
             d_loss_records=d_loss_records)
 
