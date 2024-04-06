@@ -12,7 +12,7 @@ import torchmetrics.functional as F
 
 
 def detect(model_path: str = './models/madgan',
-           attack_csv: str = './data/swat_data_attack.csv',
+           attack_csv: str = './data/swat_test.csv',
            batch_size: int = 32,
            anomaly_threshold: float = 0.8,
            max_iter_for_reconstruct: int = 10,
@@ -43,8 +43,8 @@ def detect(model_path: str = './models/madgan',
     gen_path = [model for model in latest_files if 'generator' in model][0]
     print(f"Dis_path {dis_path}; Gen_path {gen_path}")
 
-    generator = Generator.from_pretrained(gen_path).to(DEVICE)
-    discriminator = Discriminator.from_pretrained(dis_path).to(DEVICE)
+    generator = Generator.from_pretrained(gen_path, DEVICE).to(DEVICE)
+    discriminator = Discriminator.from_pretrained(dis_path, DEVICE).to(DEVICE)
 
     print("Models loaded successfully.")
 
@@ -89,20 +89,27 @@ def calculate_metrics(pred_labels: torch.Tensor, true_labels: torch.Tensor) -> T
     Returns:
         Tuple[float, float, float]: Precision, recall, and F1 score.
     """
-     # Reshape labels
+    # Reshape labels
     pred_labels = pred_labels.view(-1)
     true_labels = true_labels.view(-1)
     print(f'pred shape: {pred_labels.shape}, {true_labels.shape}')
 
     # Compute metrics
-    precision = F.precision(pred_labels, true_labels, num_classes=2, task='binary')
+    precision = F.precision(pred_labels, true_labels,
+                            num_classes=2, task='binary')
     recall = F.recall(pred_labels, true_labels, num_classes=2, task='binary')
     f1 = F.f1_score(pred_labels, true_labels, num_classes=2, task='binary')
 
     return precision, recall, f1
 
+
 def _prepare_data(df: pd.DataFrame, batch_size: int, window_size: int,
                   window_stride: int) -> Iterator[torch.Tensor]:
+    labels = df.pop('label')
+    df = madgan.data.feature_extract(df, skip_size=0,
+                                     n_features=constants.N_FEATURES)
+    df.loc[:, 'label'] = labels
+    print(f'Feature extracted data shape: {df.shape}')
     dataset = madgan.data.WindowDataset(df, window_size=window_size,
                                         window_slide=window_stride, use_label=True)
     dl = madgan.data.prepare_dataloader(dataset, batch_size=batch_size)
