@@ -37,13 +37,13 @@ def detect(model_path: str = './models/madgan',
 
     pts_files = [os.path.join(model_path, f) for f in os.listdir(model_path)]
     pts_files.sort(key=os.path.getmtime, reverse=True)
-    latest_files = pts_files[:2]
+    latest_files = pts_files[:3]
     dis_path = [file for file in latest_files if 'discriminator' in file][0]
     gen_path = [model for model in latest_files if 'generator' in model][0]
     print(f"Dis_path {dis_path}; Gen_path {gen_path}")
 
-    generator = Generator.from_pretrained(gen_path, DEVICE)
-    discriminator = Discriminator.from_pretrained(dis_path, DEVICE)
+    generator = Generator.from_pretrained(gen_path).to(DEVICE)
+    discriminator = Discriminator.from_pretrained(dis_path).to(DEVICE)
 
     print("Models loaded successfully.")
 
