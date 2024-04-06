@@ -63,8 +63,6 @@ def detect(model_path: str = './models/madgan',
 
         # Convert predictions to binary labels
         pred_labels = (detect_res > anomaly_threshold).float().view_as(y)
-        if torch.any(y == 1):
-            print(f'True label: index {i},\n y {y},\n pred: {pred_labels}')
 
         # Update counters
         total_samples += y.size(0) * y.size(1)
@@ -92,7 +90,13 @@ def calculate_metrics(pred_labels: torch.Tensor, true_labels: torch.Tensor) -> T
     # Reshape labels
     pred_labels = pred_labels.view(-1)
     true_labels = true_labels.view(-1)
-    print(f'pred shape: {pred_labels.shape}, {true_labels.shape}')
+    if torch.any(true_labels == 1):
+        print(f'The true labels count: {true_labels.count_nonzero()}'
+              f' The predicted labels count: {pred_labels.count_nonzero()}'
+              f'True positive count: {(pred_labels == true_labels).sum()}'
+              f'False positive count: {(pred_labels != true_labels).sum()}'
+              f'False negative count: {(pred_labels != true_labels).sum()}'
+              f'True negative count: {(pred_labels == true_labels).sum()}')
 
     # Compute metrics
     precision = F.precision(pred_labels, true_labels,
