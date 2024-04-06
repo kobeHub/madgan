@@ -97,7 +97,8 @@ def train_one_epoch(generator: nn.Module,
                 d_loss.backward()
                 discriminator_optimizer.step()
             elif (i + 1) % log_every == 0:
-                print(f"Skip discriminator update with a high loss value")
+                print(f"Epoch [{epoch}/{epochs}], Step [{i}/{len(real_dataloader)}], "
+                      f"Skip discriminator update with a high loss value")
             d_loss_current += d_loss.item()
         D_x = real_output.mean().item()
         D_G_z1 = fake_output.mean().item()
