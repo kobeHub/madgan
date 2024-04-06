@@ -36,7 +36,7 @@ def train(
     print(
         f'Data shape: {df.shape}, batch size: {batch_size}, window size: {window_size}, window stride: {window_stride}\nCol: {df.columns}')
     # The output_dim of the generator and the input_dim of the discriminator
-    n_features = df.shape[-1]
+    n_features = constants.N_FEATURES
     train_dl, test_dl = _prepare_data(df=df,
                                       batch_size=batch_size,
                                       window_size=window_size,
@@ -122,19 +122,23 @@ def _prepare_data(
     window_size: int,
     window_stride: int,
 ) -> Tuple[Iterator[torch.Tensor], Iterator[torch.Tensor]]:
+    # PCA feature extraction
+    df = madgan.data.feature_extract(
+        df, skip_size=constants.N_SKIP_SIZE, n_features=constants.N_FEATURES)
+    print(f'Feature extracted data shape: {df.shape}')
     dataset = madgan.data.WindowDataset(df,
                                         window_size=window_size,
                                         window_slide=window_stride)
-
+    # Split the dataset into training and testing
     indices = torch.randperm(len(dataset))
-    train_len = int(len(dataset) * .8)
-    train_dataset = torch.utils.data.Subset(dataset,
-                                            indices[:train_len].tolist())
-    test_dataset = torch.utils.data.Subset(dataset,
-                                           indices[train_len:].tolist())
+    train_len = int(0.8 * len(dataset))
+    train_dataset = torch.utils.data.Subset(
+        dataset, indices[:train_len].tolist())
+    test_dataset = torch.utils.data.Subset(
+        dataset, indices[train_len:].tolist())
 
-    train_dl = madgan.data.prepare_dataloader(train_dataset,
-                                              batch_size=batch_size)
-    test_dl = madgan.data.prepare_dataloader(test_dataset,
-                                             batch_size=batch_size)
+    train_dl = madgan.data.prepare_dataloader(
+        train_dataset, batch_size=batch_size)
+    test_dl = madgan.data.prepare_dataloader(
+        test_dataset, batch_size=batch_size)
     return train_dl, test_dl

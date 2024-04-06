@@ -1,10 +1,13 @@
 from typing import Any, Callable, Iterator, Optional, Sequence
 import torch
+import torch.utils
 from torch.utils.data import Dataset, DataLoader
+import torch.utils.data
 from torch.utils.data.distributed import DistributedSampler
 
 import pandas as pd
 import numpy as np
+from sklearn.decomposition import PCA
 
 
 class WindowDataset(Dataset):
@@ -72,7 +75,7 @@ def prepare_dataloader(ds: Dataset,
     Args:
         ds (Dataset): Training dataset.
         batch_size (int): DataLoader batch size.
-        is_distributed (bool): Is the training distributed over multiple nodes? 
+        is_distributed (bool): Is the training distributed over multiple nodes?
             Defaults to False.
 
     Returns:
@@ -89,3 +92,33 @@ def _window_array(array: np.ndarray, window_size: int,
         array[i:i + window_size]
         for i in range(0, array.shape[0] - window_size + 1, window_slide)
     ])
+
+
+def feature_extract(df: pd.DataFrame, skip_size: int, n_features: int) -> Iterator[torch.utils.data.Dataset]:
+    """Extract features from a DataFrame.
+
+    Args:
+        df (pd.DataFrame): Input DataFrame.
+        skip_size (int): Number of rows to skip at the beginning.
+        n_features (int): Number of features to consider.
+
+    Returns:
+        Iterator[torch.utils.data.Dataset]: Iterator to go over the extracted features.
+    """
+    features = df.columns.tolist()
+    df = df.astype(float)
+    for f in features:
+        max_val = df[f].max()
+        if max_val != 0:
+            df.loc[:, f] /= max_val
+            # [-1, 1]
+            df.loc[:, f] = 2 * df[f] - 1
+
+    samples = df.iloc[skip_size:, :-1].copy()
+    x_n = samples.values
+    pca = PCA(n_components=n_features, svd_solver='full')
+    pca.fit(x_n)
+    pc = pca.components_
+    t_n = np.matmul(x_n, pc.transpose(1, 0))
+    samples = pd.DataFrame(t_n, columns=[f"pc-{i}" for i in range(n_features)])
+    return samples
