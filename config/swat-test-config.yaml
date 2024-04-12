@@ -1,0 +1,14 @@
+Name: swat-test-config
+Description: This file contains the configuration for the SWAT dataset.
+d_model_path: ./models/madgan/discriminator_7.pt
+g_model_path: ./models/madgan/generator_7.pt
+attack_data: ./data/swat_test.csv
+batch_size: 32
+anomaly_threshold: 0.8
+max_iter_for_reconstruction: 10 
+print_every: 30
+
+window_size: 60
+window_stride: 10
+n_features: 5
+latent_space_dim: 15

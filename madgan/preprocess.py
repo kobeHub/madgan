@@ -16,7 +16,7 @@ def convert_csv(raw_path: str, output_csv: str, sheet_name: str = 'Combined Data
     df.columns = df.columns.str.strip()
     df['Normal/Attack'] = df['Normal/Attack'].replace('\s+', '', regex=True)
     df.loc[:, 'label'] = df['Normal/Attack'].map({'Normal': 0, 'Attack': 1})
-    df = df.drop(['Normal/Attack', 'Timestamp'], axis=1)
+    df = df.drop(['Normal/Attack'], axis=1)
     print(f"Data shape: {df.shape},\nColumns: {df.columns}")
     df.to_csv(output_csv, index=False)
 

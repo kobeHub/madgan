@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import Iterator, Tuple, Union
-from madgan import constants
 import os
 import torch
 import madgan
@@ -11,36 +10,35 @@ import pandas as pd
 import torchmetrics.functional as F
 
 
-def detect(model_path: str = './models/madgan',
-           attack_csv: str = './data/swat_test.csv',
-           batch_size: int = 32,
-           anomaly_threshold: float = 0.8,
-           max_iter_for_reconstruct: int = 10,
-           print_every: int = 30):
+def detect(config_file: str = './config/swat-test-config.yaml'):
     """Detect anomalies in the input data using the MAD-GAN model.
 
     Args:
         model_path (str): Path to the MAD-GAN model.
         anomaly_threshold (float, optional): Anomaly threshold. Defaults to 1.0.
     """
+    config = madgan.utils.read_config(config_file)
+    print(f'Config for the detection:\n{config}')
 
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    batch_size = config['batch_size']
+    window_size = config['window_size']
+    window_stride = config['window_stride']
+    n_features = config['n_features']
+    latent_space_dim = config['latent_space_dim']
 
     # Load the test data
-    df = pd.read_csv(attack_csv)
+    df = pd.read_csv(config['attack_data'])
     print(f"Test data shape: {df.shape}")
     features = df.columns.tolist().pop(-1)
     samples, labels = df[features], df['label']
     print(f'Class distribution: {labels.value_counts()}')
     print(f"Test data samples: {samples.shape}, labels: {labels.shape}")
-    test_dl = _prepare_data(df, batch_size=batch_size, window_size=constants.WINDOW_SIZE,
-                            window_stride=constants.WINDOW_STRIDE)
+    test_dl = _prepare_data(df, batch_size=batch_size, window_size=window_size,
+                            window_stride=window_stride, n_features=n_features)
 
-    pts_files = [os.path.join(model_path, f) for f in os.listdir(model_path)]
-    pts_files.sort(key=os.path.getmtime, reverse=True)
-    latest_files = pts_files[:3]
-    dis_path = [file for file in latest_files if 'discriminator' in file][0]
-    gen_path = [model for model in latest_files if 'generator' in model][0]
+    dis_path = config['d_model_path']
+    gen_path = config['g_model_path']
     print(f"Dis_path {dis_path}; Gen_path {gen_path}")
 
     generator = Generator.from_pretrained(gen_path, DEVICE).to(DEVICE)
@@ -48,11 +46,12 @@ def detect(model_path: str = './models/madgan',
 
     print("Models loaded successfully.")
 
+    anomaly_threshold = config['anomaly_threshold']
     detector = AnomalyDetector(discriminator=discriminator, generator=generator, device=DEVICE,
-                               latent_space_dim=constants.LATENT_SPACE_DIM,
-                               anomaly_threshold=anomaly_threshold,
+                               latent_space_dim=latent_space_dim,
+                               anomaly_threshold=config['anomaly_threshold'],
                                res_weight=0.00002,
-                               max_iter_for_reconstruct=max_iter_for_reconstruct)
+                               max_iter_for_reconstruct=config['max_iter_for_reconstruct'],)
     total_samples = 0
     correct_predictions = 0
     for i, (x, y) in enumerate(test_dl):
@@ -69,7 +68,7 @@ def detect(model_path: str = './models/madgan',
         correct_predictions += (pred_labels == y).sum().item()
         # print(f'Cor: {correct_predictions}, total: {total_samples}')
 
-        if i % print_every == 0:
+        if i % config['print_every'] == 0:
             # Calculate metrics
             accuracy = correct_predictions / total_samples
             precision, recall, f1 = calculate_metrics(pred_labels, y)
@@ -108,10 +107,10 @@ def calculate_metrics(pred_labels: torch.Tensor, true_labels: torch.Tensor) -> T
 
 
 def _prepare_data(df: pd.DataFrame, batch_size: int, window_size: int,
-                  window_stride: int) -> Iterator[torch.Tensor]:
+                  window_stride: int, n_features) -> Iterator[torch.Tensor]:
     labels = df.pop('label')
     df = madgan.data.feature_extract(df, skip_size=0,
-                                     n_features=constants.N_FEATURES)
+                                     n_features=n_features)
     df.loc[:, 'label'] = labels
     print(f'Feature extracted data shape: {df.shape}')
     dataset = madgan.data.WindowDataset(df, window_size=window_size,

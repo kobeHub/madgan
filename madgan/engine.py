@@ -5,7 +5,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from madgan import constants
 
 LossFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
 
@@ -25,12 +24,8 @@ def train_one_epoch(generator: nn.Module,
                     latent_dataloader: Iterator[torch.Tensor],
                     discriminator_optimizer: torch.optim.Optimizer,
                     generator_optimizer: torch.optim.Optimizer,
-                    normal_label: int = 0,
-                    anomaly_label: int = 1,
                     epoch: int = 0,
-                    epochs: int = 0,
-                    log_every: int = 30,
-                    skip_d_g_loss: float = 0.7,
+                    config: Dict[str, object] = None,
                     g_loss_records: List[float] = None,
                     d_loss_records: List[float] = None) -> None:
     """Trains a GAN for a single epoch.
@@ -48,19 +43,17 @@ def train_one_epoch(generator: nn.Module,
             discrimninator.
         generator_optimizer (torch.optim.Optimizer): Oprimizer for the generator
             module.
-        normal_label (int): Label for samples with normal behaviour
-            (real or non-anomaly). Defaults to 0.
-        anomaly_label (int): Label that identifies generate samples
-            (anomalies when running inference). Defaults to 1.
         epoch (int, optional): Current epoch (just for logging purposes).
             Defaults to 0.
-        log_every (int, optional): Log the training progess every n steps.
-            Defaults to 30.
     """
     generator.train()
     discriminator.train()
     # torch.autograd.set_detect_anomaly(True)
     update_discriminator = True
+    normal_label, anomaly_label = config['normal_label'], config['anomaly_label']
+    log_every = config['log_every']
+    epochs = config['epochs']
+    d_rounds_per_epoch, g_rounds_per_epoch = config['d_round_per_epoch'], config['g_round_per_epoch']
 
     for i, (real, z) in enumerate(zip(real_dataloader, latent_dataloader)):
         bs = real.size(0)
@@ -77,7 +70,7 @@ def train_one_epoch(generator: nn.Module,
         # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
         ###########################
         d_loss_current = 0
-        for _ in range(constants.D_ROUND_PER_EPOCH):
+        for _ in range(d_rounds_per_epoch):
             discriminator.zero_grad()
             real_output, real_logits = discriminator(real)
             fake_output, fake_logits = discriminator(fake.detach())
@@ -102,14 +95,14 @@ def train_one_epoch(generator: nn.Module,
             d_loss_current += d_loss.item()
         D_x = real_output.mean().item()
         D_G_z1 = fake_output.mean().item()
-        d_loss = d_loss_current / constants.D_ROUND_PER_EPOCH
+        d_loss = d_loss_current / d_rounds_per_epoch
         # Update the discriminator
 
         ############################
         # (2) Update G network: maximize log(D(G(z)))
         ###########################
         g_loss_current = 0
-        for _ in range(constants.G_ROUND_PER_EPOCH):
+        for _ in range(g_rounds_per_epoch):
             generator.zero_grad()
             fake = generator(z)
             fake_out_g, fake_logits_g = discriminator(fake)
@@ -120,8 +113,8 @@ def train_one_epoch(generator: nn.Module,
             # Update the generator
             generator_optimizer.step()
             g_loss_current += cheat_loss.item()
-        cheat_loss = g_loss_current / constants.G_ROUND_PER_EPOCH
-        if cheat_loss > skip_d_g_loss:
+        cheat_loss = g_loss_current / g_rounds_per_epoch
+        if cheat_loss > config['skip_d_g_loss']:
             update_discriminator = False
         else:
             update_discriminator = True
