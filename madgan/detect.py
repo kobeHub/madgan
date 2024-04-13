@@ -124,7 +124,7 @@ def _prepare_data(df: pd.DataFrame, config: dict) -> Iterator[torch.Tensor]:
         dl = madgan.data.prepare_dataloader(dataset, batch_size=batch_size)
     else:
         print(f'Preparing data for testing')
-        start, end = config['test_range']
+        start, end = config['test_data_range']
         samples = df.iloc[start:end, :].copy()
         dataset = madgan.data.WindowDataset(samples, window_size=window_size,
                                             window_slide=window_stride, use_label=True)
