@@ -94,7 +94,7 @@ def _window_array(array: np.ndarray, window_size: int,
     ])
 
 
-def feature_extract(df: pd.DataFrame, skip_size: int, n_features: int) -> Iterator[torch.utils.data.Dataset]:
+def feature_extract_without_label(df: pd.DataFrame, skip_size: int, n_features: int) -> Iterator[torch.utils.data.Dataset]:
     """Extract features from a DataFrame.
 
     Args:

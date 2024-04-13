@@ -1,7 +1,6 @@
-from pathlib import Path
-from typing import Iterator, Tuple, Union
-import os
+from typing import Iterator, Tuple
 import torch
+from torch.utils.data import Dataset, DataLoader
 import madgan
 from madgan.models import Discriminator, Generator
 from madgan.anomaly import AnomalyDetector
@@ -34,8 +33,7 @@ def detect(config_file: str = './config/swat-test-config.yaml'):
     samples, labels = df[features], df['label']
     print(f'Class distribution: {labels.value_counts()}')
     print(f"Test data samples: {samples.shape}, labels: {labels.shape}")
-    test_dl = _prepare_data(df, batch_size=batch_size, window_size=window_size,
-                            window_stride=window_stride, n_features=n_features)
+    test_dl = _prepare_data(df, config)
 
     dis_path = config['d_model_path']
     gen_path = config['g_model_path']
@@ -52,9 +50,11 @@ def detect(config_file: str = './config/swat-test-config.yaml'):
                                anomaly_threshold=config['anomaly_threshold'],
                                res_weight=0.00002,
                                max_iter_for_reconstruct=config['max_iter_for_reconstruct'],)
+
     total_samples = 0
     correct_predictions = 0
     for i, (x, y) in enumerate(test_dl):
+        print(f'Batch {i}, x shape: {x.shape}, y shape: {y.shape}')
         x = x.float().to(DEVICE)
         y = y.float().to(DEVICE)
 
@@ -72,8 +72,9 @@ def detect(config_file: str = './config/swat-test-config.yaml'):
             # Calculate metrics
             accuracy = correct_predictions / total_samples
             precision, recall, f1 = calculate_metrics(pred_labels, y)
-            print(f"Anomaly Detection Batch [{i+1}/{len(test_dl)}]: Accuracy: {accuracy:.4f}, "
-                  f"Precision: {precision:.4f}, Recall: {recall:.4f}, F1 Score: {f1:.4f}")
+            if precision > 0 and recall > 0 and f1 > 0:
+                print(f"Anomaly Detection Batch [{i+1}/{len(test_dl)}]: Accuracy: {accuracy:.4f}, "
+                      f"Precision: {precision:.4f}, Recall: {recall:.4f}, F1 Score: {f1:.4f}")
 
 
 def calculate_metrics(pred_labels: torch.Tensor, true_labels: torch.Tensor) -> Tuple[float, float, float]:
@@ -106,14 +107,28 @@ def calculate_metrics(pred_labels: torch.Tensor, true_labels: torch.Tensor) -> T
     return precision, recall, f1
 
 
-def _prepare_data(df: pd.DataFrame, batch_size: int, window_size: int,
-                  window_stride: int, n_features) -> Iterator[torch.Tensor]:
+def _prepare_data(df: pd.DataFrame, config: dict) -> Iterator[torch.Tensor]:
     labels = df.pop('label')
-    df = madgan.data.feature_extract(df, skip_size=0,
-                                     n_features=n_features)
+    n_features = config['n_features']
+    window_size = config['window_size']
+    window_stride = config['window_stride']
+    batch_size = config['batch_size']
+
+    df = madgan.data.feature_extract_without_label(df, skip_size=0,
+                                                   n_features=n_features)
     df.loc[:, 'label'] = labels
     print(f'Feature extracted data shape: {df.shape}')
-    dataset = madgan.data.WindowDataset(df, window_size=window_size,
-                                        window_slide=window_stride, use_label=True)
-    dl = madgan.data.prepare_dataloader(dataset, batch_size=batch_size)
+    if config['test_batches']:
+        print(f'Preparing data for testing batches')
+        dataset = madgan.data.WindowDataset(df, window_size=window_size,
+                                            window_slide=window_stride, use_label=True)
+        dl = madgan.data.prepare_dataloader(dataset, batch_size=batch_size)
+    else:
+        print(f'Preparing data for testing')
+        start, end = config['test_range']
+        samples = df.iloc[start:end, :].copy()
+        dataset = madgan.data.WindowDataset(samples, window_size=window_size,
+                                            window_slide=window_stride, use_label=True)
+        dl = DataLoader(
+            dataset, batch_size=len(dataset), shuffle=False)
     return dl

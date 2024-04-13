@@ -6,9 +6,11 @@ attack_data: ./data/swat_test.csv
 batch_size: 32
 anomaly_threshold: 0.8
 max_iter_for_reconstruction: 10 
-print_every: 30
+print_every: 1
 
 window_size: 60
 window_stride: 10
 n_features: 5
 latent_space_dim: 15
+test_batches: False
+test_data_range: ([0, 30000])

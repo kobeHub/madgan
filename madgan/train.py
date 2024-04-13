@@ -124,7 +124,7 @@ def _prepare_data(
     n_features: int,
 ) -> Tuple[Iterator[torch.Tensor], Iterator[torch.Tensor]]:
     # PCA feature extraction
-    df = madgan.data.feature_extract(
+    df = madgan.data.feature_extract_without_label(
         df, skip_size=n_skip_size, n_features=n_features)
     print(f'Feature extracted data shape: {df.shape}')
     dataset = madgan.data.WindowDataset(df,
