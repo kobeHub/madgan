@@ -48,7 +48,7 @@ def detect(config_file: str = './config/swat-test-config.yaml'):
     detector = AnomalyDetector(discriminator=discriminator, generator=generator, device=DEVICE,
                                latent_space_dim=latent_space_dim,
                                anomaly_threshold=config['anomaly_threshold'],
-                               res_weight=0.00002,
+                               res_weight=config['reconstruction_weight'],
                                max_iter_for_reconstruct=config['max_iter_for_reconstruction'],)
 
     total_samples = 0
@@ -59,6 +59,7 @@ def detect(config_file: str = './config/swat-test-config.yaml'):
         y = y.float().to(DEVICE)
 
         detect_res = detector.predict(x)
+        print(f'Datect res: {detect_res.values}, y: {y.values}')
 
         # Convert predictions to binary labels
         pred_labels = (detect_res > anomaly_threshold).float().view_as(y)

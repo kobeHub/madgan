@@ -7,20 +7,20 @@ input_data: ./data/swat_train.csv
 # Fixed constants for the MAD-GAN model
 normal_label: 0
 anomaly_label: 1
-latent_space_dim: 15
+latent_space_dim: 30
 n_features: 5
 n_skip_size: 21600
 log_every: 3
 
 # Input args
-batch_size: 512
+batch_size: 32
 epochs: 4
 g_lr: (1e-4)
 d_lr: (1e-4)
 hidden_dim: 100
 g_lstm_layers: 3
 d_lstm_layers: 1
-g_round_per_epoch: 3
+g_round_per_epoch: 6
 d_round_per_epoch: 1
 skip_d_g_loss: 19999.0
 
