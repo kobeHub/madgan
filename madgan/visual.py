@@ -10,5 +10,5 @@ def plot_losses(g_loss, d_loss, img_path=None):
     plt.ylabel("Loss")
     plt.legend()
     if img_path:
-        plt.savefig(img_path)
+        plt.savefig(img_path, dpi=300)
     plt.show()

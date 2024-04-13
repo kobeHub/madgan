@@ -25,7 +25,7 @@ d_round_per_epoch: 1
 skip_d_g_loss: 19999.0
 
 # Windows size : 30 * 1, 2, 3 ... 10
-window_size: 60
+window_size: 90
 window_stride: 10
 add_batch_mean: False
 random_seed: 444488488
