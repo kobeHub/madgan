@@ -49,12 +49,12 @@ def detect(config_file: str = './config/swat-test-config.yaml'):
                                latent_space_dim=latent_space_dim,
                                anomaly_threshold=config['anomaly_threshold'],
                                res_weight=0.00002,
-                               max_iter_for_reconstruct=config['max_iter_for_reconstruct'],)
+                               max_iter_for_reconstruct=config['max_iter_for_reconstruction'],)
 
     total_samples = 0
     correct_predictions = 0
     for i, (x, y) in enumerate(test_dl):
-        print(f'Batch {i}, x shape: {x.shape}, y shape: {y.shape}')
+        print(f'x shape: {x.shape}, y shape: {y.shape}')
         x = x.float().to(DEVICE)
         y = y.float().to(DEVICE)
 

@@ -8,7 +8,7 @@ anomaly_threshold: 0.8
 max_iter_for_reconstruction: 10 
 print_every: 1
 
-window_size: 60
+window_size: 90
 window_stride: 10
 n_features: 5
 latent_space_dim: 15

@@ -1,7 +1,7 @@
 Name: swat-config
 Description: This file contains the configuration for the SWAT dataset.
 # Training related
-model_dir: ./models
+model_dir: ./models/madgan
 input_data: ./data/swat_train.csv
 
 # Fixed constants for the MAD-GAN model
