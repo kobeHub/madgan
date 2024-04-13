@@ -1,0 +1,34 @@
+Name: Configuration for the baseline models
+train_data: ./data/swat_train.csv
+test_data: ./data/swat_test.csv
+n_skip_size: 21600
+
+# OCSVM
+n_features: 5
+svm_ws: 60
+svm_ss: 10
+svm_train_skip: 400_000
+svm_test_range: ([0, 8000])
+enable_svm: False
+
+# KNN
+enable_knn: False
+knn_train_skip: 400_000
+knn_test_range: ([0, 30000])
+  
+# AE
+enable_ae: False
+ae_train_skip: 400_000
+ae_test_range: ([0, 60000])
+ae_encoding_dim: 32
+ae_anomaly_threshold: 2.172
+ae_epochs: 50
+  
+# FB
+enable_fb: True
+fb_train_skip: 400_000
+fb_test_range: ([0, 30000])
+fb_n_estimators: 20
+fb_n_jobs: 8
+fb_contamination: (1e-7)
+fb_threshold: 6.1

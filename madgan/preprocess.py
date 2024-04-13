@@ -4,6 +4,23 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.decomposition import PCA
 
 
+def convert_csv(raw_path: str, output_csv: str, sheet_name: str = 'Combined Data') -> None:
+    """Convert the raw data to a CSV file.
+
+    Args:
+        raw_path (str): Path to the raw data file.
+        output_csv (str): Path to the output CSV file.
+    """
+    df = pd.read_excel(raw_path, sheet_name=sheet_name, header=1)
+    assert df.isnull().sum().sum() == 0, 'Missing values in the data'
+    df.columns = df.columns.str.strip()
+    df['Normal/Attack'] = df['Normal/Attack'].replace('\s+', '', regex=True)
+    df.loc[:, 'label'] = df['Normal/Attack'].map({'Normal': 0, 'Attack': 1})
+    df = df.drop(['Normal/Attack'], axis=1)
+    print(f"Data shape: {df.shape},\nColumns: {df.columns}")
+    df.to_csv(output_csv, index=False)
+
+
 def swat(raw_data_path: str,
          sheet_name: str = 'Combined Data',
          n_features: int = 10,
@@ -51,4 +68,6 @@ def swat(raw_data_path: str,
     projected_sample = samples @ pc.T
     print(f"Projected data shape: {projected_sample.shape}")
     print(f"Explained variance: {ex_var},\nHead: {projected_sample[:5]}")
+    projected_sample.columns = [f'PC-{i+1}' for i in range(n_features)]
+    projected_sample.loc[:, 'label'] = labels
     projected_sample.to_csv(output_csv, index=False)
