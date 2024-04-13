@@ -1,52 +1,51 @@
-# MAD-GAN PyTorch Implementation
+# MAD-GAN: Multivariate Anomaly Detection with GAN in PyTorch
 
-Multivariate Anomaly Detection with GAN (MAD-GAN) PyTorch modern implementation.
+This repository contains a modern PyTorch implementation of the Multivariate Anomaly Detection with Generative Adversarial Networks (MAD-GAN) model, as described in the [MAD-GAN paper](https://arxiv.org/pdf/1901.04997.pdf).
 
-This implementation is based on the model described in the MAD-GAN paper (https://arxiv.org/pdf/1901.04997.pdf).
+![MAD-GAN Model](img/madgan.png)
 
-## Model picture 🖼
+## Setting Up the Environment
 
-![](img/madgan.png)
+This project uses conda for managing the virtual environment. We provide configuration files for both GPU and CPU versions of PyTorch. Please ensure that CUDA and cuDNN are properly installed if you plan to use the GPU environment.
 
-## Data Preparation
-
-Download the SWaT data and extrat it to the `data` directory. Run the command to generate the preprocessd data:
+To create the environment, use one of the following commands:
 
 ```bash
-python -m madgan swat './data/SWaT_Dataset_Normal_v0.xlsx' --n-features 10 --output-csv './data/swat_data_normal_train.csv' --sheet-name Normal.csv
+# For GPU environment
+conda env create -f environment-gpu.yaml
+
+# For CPU environment
+conda env create -f environment-cpu.yaml
 ```
 
-## Train the MAD-GAN ⛹️‍♀️
+## Preparing the Data
+First, download the SWaT dataset and extract it to the data directory. Then, run the following commands to generate the preprocessed data:
 
-To train the MAD-GAN neural network you need a preprocessed dataset in CSV format
-(more formats will come soon).
+```bash
+# For training data
+python -m madgan convert 'data/SWaT_Dataset_Normal_v0.xlsx' 'data/swat_train.csv' --sheet-name Normal.cs 
 
-The CSV should look like this:
-
-```
-feature1,feature2,feature3,featureN
-0.1,-0.2,-0.7,0.8
-0.1,-0.2,-0.7,0.8
-0.1,-0.2,-0.7,0.8
-...
+# For testing data
+python -m madgan convert 'data/SWaT_Dataset_Attack_v0.xlsx' 'data/swat_test.csv'  
 ```
 
-> Note that for now time based windows are not supported (support will drop soon)
+## Training the Model
+The configuration for the training process is located in `config/sweat-train-config.yaml`. You can duplicate or edit this file as needed. To start the training process, run the following command:
 
-Then to train the model you just run the following CLI command.
 
-```
-$ python -m madgan train \
-  data/dataset.csv
-  --batch-size 32 \
-  --epochs 8 \
-  --model-dir models/madgan # Training checkpoints will be stored here
+```bash
+python -m madgan train config/swat-train-config.yaml 
 ```
 
-## Use a trained model
+## Detecting Anomalies
 
-TBD
+To detect anomalies, first edit the configuration file `config/swat-test-config.yaml` as needed. Then, run the following command:
 
-## References 📖
+```bash
+python -m madgan detect config/swat-test-config.yaml
+```
+
+
+## References
 
 [1] [MAD-GAN: Multivariate Anomaly Detection for Time Series Data with Generative Adversarial Networks](https://arxiv.org/pdf/1901.04997.pdf)
