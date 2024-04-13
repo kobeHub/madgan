@@ -90,13 +90,12 @@ def calculate_metrics(pred_labels: torch.Tensor, true_labels: torch.Tensor) -> T
     # Reshape labels
     pred_labels = pred_labels.view(-1)
     true_labels = true_labels.view(-1)
-    if torch.any(true_labels == 1):
-        print(f'The true labels count: {true_labels.count_nonzero()},'
-              f' The predicted labels count: {pred_labels.count_nonzero()}, '
-              f'True positive count: {(pred_labels == true_labels).sum()}, '
-              f'False positive count: {(pred_labels != true_labels).sum()}, '
-              f'False negative count: {(pred_labels != true_labels).sum()}, '
-              f'True negative count: {(pred_labels == true_labels).sum()}')
+    print(f'The true labels count: {true_labels.count_nonzero()},'
+          f' The predicted labels count: {pred_labels.count_nonzero()}, '
+          f'True positive count: {(pred_labels == true_labels).sum()}, '
+          f'False positive count: {(pred_labels != true_labels).sum()}, '
+          f'False negative count: {(pred_labels != true_labels).sum()}, '
+          f'True negative count: {(pred_labels == true_labels).sum()}')
 
     # Compute metrics
     precision = F.precision(pred_labels, true_labels,
