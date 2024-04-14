@@ -10,10 +10,10 @@ anomaly_label: 1
 latent_space_dim: 30
 n_features: 5
 n_skip_size: 21600
-log_every: 3
+log_every: 10
 
 # Input args
-batch_size: 32
+batch_size: 128
 epochs: 4
 g_lr: (1e-4)
 d_lr: (1e-4)

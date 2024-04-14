@@ -51,6 +51,9 @@ def display_label_counts(y_test):
     print(f'True label counts: 0->{label_counts[0]}, 1->{label_counts[1]}')
 
 
+# ==============================================================================
+# One-Class SVM
+# ==============================================================================
 def run_anomalies_ocsvm(train_data, test_data, config):
     # Access the config parameter
     print(f'Config: {config}')
@@ -85,6 +88,9 @@ def run_anomalies_ocsvm(train_data, test_data, config):
     return compute_metrics(y_test, pred_label)
 
 
+# ==============================================================================
+# K-Nearest Neighbors
+# ==============================================================================
 def run_anomalies_knn(train_data, test_data, config, n_neighbors=5, anomaly_threshold=100.5):
     x_train = train_data[config['knn_train_skip']:, :-1]
     test_start, test_end = config['knn_test_range']

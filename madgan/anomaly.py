@@ -23,13 +23,16 @@ class AnomalyDetector(object):
         self.max_iter_for_reconstruct = max_iter_for_reconstruct
 
     def predict(self, tensor: torch.Tensor) -> torch.Tensor:
-        return (self.predict_proba(tensor) > self.threshold).float()
+        predict = self.predict_proba(tensor)
+        print(
+            f'Pred float range: {predict.max().item(), predict.min().item()}')
+        return (predict > self.threshold).float()
 
     def predict_proba(self, tensor: torch.Tensor) -> torch.Tensor:
         discriminator_score = self.compute_anomaly_score(tensor)
         discriminator_score *= 1. - self.res_weight
         reconstruction_loss = self.compute_reconstruction_loss(tensor).view_as(
-                                discriminator_score)
+            discriminator_score)
         reconstruction_loss *= self.res_weight
         return reconstruction_loss + discriminator_score
 
@@ -57,7 +60,7 @@ class AnomalyDetector(object):
             loss = loss_fn(x_gen, x)  # MSE loss
             loss.backward()
             optimizer.step()
-            
+
         self.generator.eval()
 
         return self.generator(z).detach()
@@ -69,7 +72,7 @@ class AnomalyDetector(object):
             (tensor.size(0), tensor.size(1), self.latent_space_dim)).to(self.device)
         Z.requires_grad = True
         optimizer = torch.optim.Adam([Z], lr=0.01)
-        #optimizer = torch.optim.RMSprop(params=[Z], lr=0.01)
+        # optimizer = torch.optim.RMSprop(params=[Z], lr=0.01)
         loss_fn = nn.MSELoss(reduction="sum")
         normalized_target = F.normalize(tensor, dim=1, p=2)
 
@@ -82,7 +85,7 @@ class AnomalyDetector(object):
                                            normalized_target)  # .sum(dim=(1, 2))
             reconstruction_error.backward()
             optimizer.step()
-            
+
         self.generator.eval()
 
         with torch.no_grad():

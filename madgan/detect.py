@@ -56,21 +56,22 @@ def detect(config_file: str = './config/swat-test-config.yaml'):
     for i, (x, y) in enumerate(test_dl):
         print(f'x shape: {x.shape}, y shape: {y.shape}')
         x = x.float().to(DEVICE)
-        y = y.float().to(DEVICE)
+        y = y.flatten().int().to(DEVICE)
         # Get the count of each unique label in y
-        label_counts = y.bincount()
-        assert label_counts.size(
-        ) == 2, f"Unexpected label counts: {label_counts}"
+        label_counts = y.flatten().bincount()
+        assert len(
+            label_counts) == 2, f"Unexpected label counts: {label_counts}"
         print(f"True label counts: 0->{label_counts[0]}, 1->{label_counts[1]}")
 
-        detect_res = detector.predict(x)
-        print(f'Datect res: {detect_res.values}')
+        detect_res = detector.predict(x).flatten().int()
+        pred_count = detect_res.bincount()
+        print(f'Datect res: 0->{pred_count[0]}, 1->{pred_count[1]}')
 
         # Convert predictions to binary labels
+        total_samples += y.size(0)
         pred_labels = (detect_res > anomaly_threshold).float().view_as(y)
 
         # Update counters
-        total_samples += y.size(0) * y.size(1)
         correct_predictions += (pred_labels == y).sum().item()
         # print(f'Cor: {correct_predictions}, total: {total_samples}')
 
