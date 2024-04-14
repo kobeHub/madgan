@@ -56,18 +56,22 @@ def display_label_counts(y_test):
 # ==============================================================================
 def run_anomalies_ocsvm(train_data, test_data, config):
     # Access the config parameter
-    print(f'Config: {config}')
     # Extract features
     # train_features = extract_features(train_data, window_size, window_slide)
     # test_features = extract_features(test_data, window_size, window_slide)
-    x_train, y_train = train_data[:, :-1], train_data[:, -1].astype(int)
-    x_test, y_test = test_data[:, :-1], test_data[:, -1].astype(int)
+    start, end = config['svm_test_range']
+    skip = config['svm_train_skip']
+    x_train, y_train = train_data[skip:, :-
+                                  1], train_data[skip:, -1].astype(int)
+    x_test, y_test = test_data[start:end, :-
+                               1], test_data[start:end, -1].astype(int)
 
     print(
         f'OCSVM train features shape: {x_train.shape}, {y_train.shape}')
+    display_label_counts(y_test)
     # Train the OCSVM model
     clf = make_pipeline(StandardScaler(), svm.OneClassSVM(
-        nu=0.5, kernel="rbf", gamma=0.1))
+        nu=config['svm_nu'], kernel="rbf", gamma=config['svm_gamma']))
     clf.fit(x_train)
     print(f'OCSVM model trained')
 

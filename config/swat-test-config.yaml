@@ -4,7 +4,7 @@ d_model_path: ./models/madgan/discriminator_7.pt
 g_model_path: ./models/madgan/generator_7.pt
 attack_data: ./data/swat_test.csv
 batch_size: 128
-anomaly_threshold: 0.3
+anomaly_threshold: 0.86
 max_iter_for_reconstruction: 30 
 print_every: 1
 
@@ -14,4 +14,4 @@ n_features: 5
 latent_space_dim: 30
 test_batches: False
 test_data_range: ([0, 30000])
-reconstruction_weight: 0.01
+reconstruction_weight: 0.09
