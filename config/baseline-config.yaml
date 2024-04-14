@@ -7,9 +7,11 @@ n_skip_size: 21600
 n_features: 5
 svm_ws: 60
 svm_ss: 10
+svm_nu: 0.001
+svm_gamma: 0.001
 svm_train_skip: 400_000
-svm_test_range: ([0, 8000])
-enable_svm: False
+svm_test_range: ([0, 30000])
+enable_svm: True
 
 # KNN
 enable_knn: False
@@ -25,7 +27,7 @@ ae_anomaly_threshold: 2.172
 ae_epochs: 50
   
 # FB
-enable_fb: True
+enable_fb: False
 fb_train_skip: 400_000
 fb_test_range: ([0, 30000])
 fb_n_estimators: 20

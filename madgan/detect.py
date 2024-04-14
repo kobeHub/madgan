@@ -48,23 +48,30 @@ def detect(config_file: str = './config/swat-test-config.yaml'):
     detector = AnomalyDetector(discriminator=discriminator, generator=generator, device=DEVICE,
                                latent_space_dim=latent_space_dim,
                                anomaly_threshold=config['anomaly_threshold'],
-                               res_weight=0.00002,
-                               max_iter_for_reconstruct=config['max_iter_for_reconstruct'],)
+                               res_weight=config['reconstruction_weight'],
+                               max_iter_for_reconstruct=config['max_iter_for_reconstruction'],)
 
     total_samples = 0
     correct_predictions = 0
     for i, (x, y) in enumerate(test_dl):
-        print(f'Batch {i}, x shape: {x.shape}, y shape: {y.shape}')
+        print(f'x shape: {x.shape}, y shape: {y.shape}')
         x = x.float().to(DEVICE)
-        y = y.float().to(DEVICE)
+        y = y.flatten().int().to(DEVICE)
+        # Get the count of each unique label in y
+        label_counts = y.flatten().bincount()
+        assert len(
+            label_counts) == 2, f"Unexpected label counts: {label_counts}"
+        print(f"True label counts: 0->{label_counts[0]}, 1->{label_counts[1]}")
 
-        detect_res = detector.predict(x)
+        detect_res = detector.predict(x).flatten().int()
+        pred_count = detect_res.bincount()
+        print(f'Datect res: 0->{pred_count[0]}, 1->{pred_count[1]}')
 
         # Convert predictions to binary labels
+        total_samples += y.size(0)
         pred_labels = (detect_res > anomaly_threshold).float().view_as(y)
 
         # Update counters
-        total_samples += y.size(0) * y.size(1)
         correct_predictions += (pred_labels == y).sum().item()
         # print(f'Cor: {correct_predictions}, total: {total_samples}')
 
@@ -124,7 +131,7 @@ def _prepare_data(df: pd.DataFrame, config: dict) -> Iterator[torch.Tensor]:
         dl = madgan.data.prepare_dataloader(dataset, batch_size=batch_size)
     else:
         print(f'Preparing data for testing')
-        start, end = config['test_range']
+        start, end = config['test_data_range']
         samples = df.iloc[start:end, :].copy()
         dataset = madgan.data.WindowDataset(samples, window_size=window_size,
                                             window_slide=window_stride, use_label=True)
